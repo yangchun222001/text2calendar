@@ -1,1 +1,17 @@
 .DS_Store
+
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Production
+build/
+
+# Local env files
+.env*.local
+
+# Logs
+*.log
