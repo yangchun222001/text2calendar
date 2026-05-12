@@ -14,6 +14,12 @@ load_dotenv()
 
 app = Flask(__name__)
 
+SAFE_EXTRACTION_ERROR_MESSAGES = {
+    "LLM_EXTRACTION_FAILED": "The language model request failed.",
+    "RATE_LIMITED": "The language model rate limit was exceeded.",
+    "INVALID_MODEL_OUTPUT": "Model output failed schema validation.",
+}
+
 
 def _validate_iana_timezone(tz: str) -> bool:
     try:
@@ -21,6 +27,13 @@ def _validate_iana_timezone(tz: str) -> bool:
     except Exception:
         return False
     return True
+
+
+def _safe_extraction_error_message(code: str) -> str:
+    return SAFE_EXTRACTION_ERROR_MESSAGES.get(
+        code,
+        "Extraction failed.",
+    )
 
 
 @app.get("/api/health")
@@ -33,6 +46,9 @@ def extract_event():
     payload = request.get_json(silent=True) or {}
     text = (payload.get("text") or "").strip()
 
+    # Privacy boundary: do not log payload, raw event text, prompts, model
+    # responses, guest emails, or exception messages from this route. If
+    # operational logging is added, keep it to status/error-code/latency only.
     if not text:
         return (
             jsonify(
@@ -83,7 +99,14 @@ def extract_event():
         if e.code == "RATE_LIMITED":
             status = 429
         return (
-            jsonify({"error": {"code": e.code, "message": e.message}}),
+            jsonify(
+                {
+                    "error": {
+                        "code": e.code,
+                        "message": _safe_extraction_error_message(e.code),
+                    }
+                }
+            ),
             status,
         )
     except Exception:

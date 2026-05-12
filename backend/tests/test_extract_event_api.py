@@ -111,6 +111,27 @@ def test_extract_event_extraction_error_llm_failed(client):
     assert rv.get_json()["error"]["code"] == "LLM_EXTRACTION_FAILED"
 
 
+def test_extract_event_extraction_error_message_no_leak(client, caplog):
+    secret = "private-guest@example.com"
+
+    def fail(_payload):
+        raise ExtractionError("LLM_EXTRACTION_FAILED", f"Provider echoed {secret}")
+
+    app.config["EXTRACT_EVENT_FN"] = fail
+    rv = client.post(
+        "/api/extract-event",
+        json=_valid_body(text=f"Dinner with {secret}"),
+    )
+    body = rv.get_json()
+    logs = "\n".join(record.getMessage() for record in caplog.records)
+
+    assert rv.status_code == 502
+    assert body["error"]["code"] == "LLM_EXTRACTION_FAILED"
+    assert body["error"]["message"] == "The language model request failed."
+    assert secret not in str(body)
+    assert secret not in logs
+
+
 def test_extract_event_extraction_error_rate_limited(client):
     def rate_limited(_payload):
         raise ExtractionError("RATE_LIMITED", "Too many requests.")
@@ -151,6 +172,23 @@ def test_extract_event_unknown_error_no_leak(client):
     body = rv.get_json()
     assert body["error"]["code"] == "UNKNOWN"
     assert secret not in str(body)
+
+
+def test_extract_event_unknown_error_no_log_leak(client, caplog):
+    secret = "hidden-party-address@example.com"
+
+    def bad(_payload):
+        raise RuntimeError(secret)
+
+    app.config["EXTRACT_EVENT_FN"] = bad
+    rv = client.post(
+        "/api/extract-event",
+        json=_valid_body(text=f"Invite {secret}"),
+    )
+    logs = "\n".join(record.getMessage() for record in caplog.records)
+
+    assert rv.status_code == 500
+    assert secret not in logs
 
 
 def test_extract_event_llm_not_configured_without_key(client, monkeypatch):

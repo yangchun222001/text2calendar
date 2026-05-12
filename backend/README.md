@@ -19,6 +19,19 @@ Optional environment variables for the default OpenAI-compatible client:
 
 Tests inject `app.config["EXTRACT_EVENT_FN"]` so they never call the network.
 
+## Privacy And Logging
+
+- Keep `LLM_API_KEY` and related provider credentials in the backend environment
+  only. Do not expose them through frontend environment variables.
+- Do not persist raw pasted text, generated drafts, guest emails, prompts, model
+  responses, or Google Calendar URLs in the MVP.
+- Do not log request bodies, raw event text, guest emails, model prompts, model
+  responses, provider exception messages, or generated calendar links.
+- If operational logging is added later, keep it to metadata such as endpoint,
+  status, latency, coarse error code, and coarse provider outcome.
+- Debug logging that includes user content must be explicitly enabled and
+  redacted before use.
+
 ## Run
 
 ```bash
