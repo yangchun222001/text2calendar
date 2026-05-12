@@ -4,21 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-`calendar_tool` is a single-app MVP scaffold for Text to Calendar.
+`calendar_tool` is an MVP for Text to Calendar with a split frontend/backend architecture.
 
-- App location: repo root.
-- Stack: Next.js App Router, React, TypeScript, CSS Modules, pnpm.
-- Node: pinned to current LTS line in `.nvmrc` (`24`).
-- Server env: `LLM_API_KEY` in `.env.local`; never import server env helpers into client components.
+- Frontend: React + JavaScript + Vite on Node.js, using ES modules via `"type": "module"`.
+- Backend: Flask API.
+- Server env: `LLM_API_KEY`; keep it backend-only and never expose it to browser code.
 
 Commands:
 
 ```bash
-corepack enable
-pnpm install
-pnpm dev
-pnpm build
-pnpm lint
+# Frontend commands will live under frontend/
+# Backend commands will live under backend/
 ```
 
 ---

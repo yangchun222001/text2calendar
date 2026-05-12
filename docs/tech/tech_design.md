@@ -16,6 +16,10 @@ The MVP should stay intentionally small:
 
 ## 2. High-Level Architecture
 
+![alt text](image-1.png)
+
+
+
 ```text
 Browser
   - Event text input
@@ -24,7 +28,7 @@ Browser
   - Guest email validation
   - Google Calendar URL builder
 
-Backend API
+Flask Backend API
   - POST /api/extract-event
   - Calls LLM with raw text, timezone, current date, and locale context
   - Validates/parses structured model output
@@ -35,22 +39,51 @@ External Services
   - Google Calendar web create-event URL
 ```
 
+```mermaid
+flowchart LR
+  user[User] --> browser[Browser]
+
+  subgraph frontend[Frontend: React + JavaScript + Vite]
+    browser --> input[Event text input]
+    input --> ui[Editable calendar draft UI]
+    ui --> validation[Client-side validation]
+    validation --> calendarUrl[Google Calendar URL builder]
+  end
+
+  subgraph backend[Backend: Flask API]
+    extract[POST /api/extract-event]
+    serverValidation[Server-side validation]
+    llmClient[Server-side LLM client]
+    extract --> serverValidation --> llmClient
+  end
+
+  validation -->|raw text + context| extract
+  llmClient -->|structured extraction| llmProvider[LLM Provider]
+  llmProvider -->|EventDraft + warnings| extract
+  extract -->|validated JSON response| ui
+  calendarUrl --> google[Google Calendar create-event URL]
+
+  secrets[LLM_API_KEY] -. backend only .-> llmClient
+```
+
 ## 3. MVP Technology Shape
 
-A small full-stack web app is the simplest fit. Next.js is a good default because the product needs one page plus one server-side API route.
+A small split web app is the target shape: a Node.js frontend for the browser UI and a Flask backend for extraction. This keeps the LLM/API-key boundary explicit while still supporting a simple one-page product.
 
 Suggested stack:
 
-- Frontend: React.
-- Backend: Next.js API route or equivalent serverless handler.
+- Frontend: React + JavaScript + Vite, with `package.json` set to `"type": "module"`.
+- Backend: Flask API.
 - Styling: plain CSS, CSS modules, or a lightweight component approach matching the demo.
-- LLM: server-side SDK call only.
-- Validation: shared TypeScript schema with runtime validation.
-- Deployment: Vercel or any platform that supports serverless API routes.
+- LLM: server-side Python SDK call only.
+- Validation: a canonical JSON event draft contract shared through documentation and mirrored by frontend JavaScript helpers and backend Python validation.
+- Deployment: any platform that can host a static or Node-served frontend plus a Flask API.
 
 The API key must never be exposed to the browser.
 
 ## 4. Frontend Design
+
+![alt text](homepage.png)
 
 The demo already establishes the main UI contract:
 
@@ -64,12 +97,13 @@ The demo already establishes the main UI contract:
 
 Primary frontend state:
 
-```ts
-type ExtractionState =
-  | "idle"
-  | "loading"
-  | "generated"
-  | "error";
+```js
+const ExtractionState = {
+  IDLE: "idle",
+  LOADING: "loading",
+  GENERATED: "generated",
+  ERROR: "error",
+};
 ```
 
 The frontend owns:
@@ -89,38 +123,38 @@ The frontend should allow the user to edit every extracted field before opening 
 
 Request:
 
-```ts
-type ExtractEventRequest = {
-  text: string;
-  timezone: string;
-  currentDate: string; // ISO date from the user's context, e.g. "2026-05-08"
-  locale?: string; // default "en-US"
-};
+```text
+{
+  text: string,
+  timezone: string,
+  currentDate: string, // ISO date from the user's context, e.g. "2026-05-08"
+  locale?: string, // default "en-US"
+}
 ```
 
 Response:
 
-```ts
-type ExtractEventResponse = {
-  draft: EventDraft;
-  warnings: ExtractionWarning[];
-};
+```text
+{
+  draft: EventDraft,
+  warnings: ExtractionWarning[],
+}
 ```
 
 Errors:
 
-```ts
-type ExtractEventError = {
+```text
+{
   error: {
     code:
       | "EMPTY_INPUT"
       | "LLM_EXTRACTION_FAILED"
       | "INVALID_MODEL_OUTPUT"
       | "RATE_LIMITED"
-      | "UNKNOWN";
-    message: string;
-  };
-};
+      | "UNKNOWN",
+    message: string,
+  },
+}
 ```
 
 The backend should reject empty input before calling the LLM.
@@ -129,38 +163,40 @@ The backend should reject empty input before calling the LLM.
 
 The app should use one canonical event draft shape between API and UI.
 
-```ts
-type EventDraft = {
-  title: string;
-  date: string; // YYYY-MM-DD
-  startTime: string | null; // HH:mm, 24-hour local time
-  endTime: string | null; // HH:mm, 24-hour local time
-  timezone: string; // IANA timezone
-  location: string;
-  notes: string;
-  guests: string[];
-  missingStartTime: boolean;
-};
+```text
+{
+  title: string,
+  date: string, // YYYY-MM-DD
+  startTime: string | null, // HH:mm, 24-hour local time
+  endTime: string | null, // HH:mm, 24-hour local time
+  timezone: string, // IANA timezone
+  location: string,
+  notes: string,
+  guests: string[],
+  missingStartTime: boolean,
+}
 ```
 
 Potential warnings:
 
-```ts
-type ExtractionWarning = {
-  field: keyof EventDraft | "general";
+```text
+{
+  field: keyof EventDraft | "general",
   code:
     | "INFERRED_DATE"
     | "DEFAULT_DURATION"
     | "MISSING_START_TIME"
     | "LOW_CONFIDENCE"
-    | "MULTIPLE_POSSIBLE_TIMES";
-  message: string;
-};
+    | "MULTIPLE_POSSIBLE_TIMES",
+  message: string,
+}
 ```
 
 Warnings let the UI explain defaults without making the draft feel blocked.
 
 ## 7. LLM Extraction Design
+
+![alt text](image-2.png)
 
 The LLM should return structured data, not prose.
 
@@ -202,6 +238,8 @@ If guest prefill is unreliable, the fallback is to include guest emails in notes
 
 ## 9. Validation
 
+![alt text](image-3.png)
+
 Client-side validation:
 
 - Raw text is required before extraction.
@@ -228,6 +266,8 @@ Logging should avoid user-sensitive content:
 - If debugging logs are added later, they should be explicitly enabled and redacted where practical.
 
 ## 11. Testing Plan
+
+![alt text](image-4.png)
 
 Core unit tests:
 
