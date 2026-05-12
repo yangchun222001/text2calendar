@@ -1,5 +1,10 @@
 import { useCallback, useState } from "react";
 import {
+  buildGoogleCalendarUrl,
+  isValidEmail,
+  validateCalendarDraft,
+} from "./calendarUrl.js";
+import {
   validateExtractEventError,
   validateExtractEventResponse,
 } from "./validation/extraction.js";
@@ -45,10 +50,6 @@ function localISODate(d = new Date()) {
   return `${y}-${m}-${day}`;
 }
 
-function isValidEmail(s) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
-}
-
 /** @param {string} v */
 function normalizeStartTime(v) {
   const t = v.trim();
@@ -64,10 +65,12 @@ export default function App() {
   const [warnings, setWarnings] = useState([]);
   const [inputError, setInputError] = useState("");
   const [apiError, setApiError] = useState("");
+  const [calendarError, setCalendarError] = useState("");
   const [guestInput, setGuestInput] = useState("");
   const [guestError, setGuestError] = useState(false);
 
   const updateDraft = useCallback((field, value) => {
+    setCalendarError("");
     setDraft((d) => {
       if (!d) return d;
       if (field === "startTime") {
@@ -88,6 +91,7 @@ export default function App() {
     setWarnings([]);
     setInputError("");
     setApiError("");
+    setCalendarError("");
     setGuestInput("");
     setGuestError(false);
   };
@@ -97,6 +101,7 @@ export default function App() {
     if (!v) return;
     if (!isValidEmail(v)) {
       setGuestError(true);
+      setCalendarError("");
       return;
     }
     setDraft((d) => {
@@ -110,12 +115,33 @@ export default function App() {
     });
     setGuestInput("");
     setGuestError(false);
+    setCalendarError("");
   };
 
   const removeGuest = (email) => {
+    setCalendarError("");
     setDraft((d) =>
       d ? { ...d, guests: d.guests.filter((g) => g !== email) } : d,
     );
+  };
+
+  const openGoogleCalendar = () => {
+    if (!draft) return;
+    const validation = validateCalendarDraft(draft);
+    if (!validation.valid) {
+      setCalendarError(validation.errors[0]);
+      return;
+    }
+
+    const url = buildGoogleCalendarUrl(draft);
+    const opened = window.open(url, "_blank", "noopener,noreferrer");
+    if (!opened) {
+      setCalendarError(
+        "Your browser blocked the new tab. Allow pop-ups for this site and try again.",
+      );
+      return;
+    }
+    setCalendarError("");
   };
 
   const generate = async () => {
@@ -126,6 +152,7 @@ export default function App() {
     }
     setInputError("");
     setApiError("");
+    setCalendarError("");
     setStatus(ExtractionState.LOADING);
 
     const body = {
@@ -202,7 +229,9 @@ export default function App() {
             <h2 id="input-heading" className="col-title">
               Event text
             </h2>
-            <span className="col-meta">{text.length.toLocaleString()} chars</span>
+            <span className="col-meta">
+              {text.length.toLocaleString()} chars
+            </span>
           </div>
           <textarea
             className="textarea"
@@ -322,7 +351,7 @@ export default function App() {
               {draft.missingStartTime ? (
                 <p className="banner banner-warn" role="status">
                   Start time is missing — add a start time before opening Google
-                  Calendar (ticket 005).
+                  Calendar.
                 </p>
               ) : null}
 
@@ -451,6 +480,7 @@ export default function App() {
                       onChange={(e) => {
                         setGuestInput(e.target.value);
                         setGuestError(false);
+                        setCalendarError("");
                       }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
@@ -496,14 +526,18 @@ export default function App() {
                 <button
                   type="button"
                   className="btn-primary"
-                  disabled
-                  title="Google Calendar URL builder ships in ticket 005"
+                  onClick={openGoogleCalendar}
                 >
                   Add to Google Calendar
                 </button>
+                {calendarError ? (
+                  <p className="inline-error calendar-error" role="alert">
+                    {calendarError}
+                  </p>
+                ) : null}
                 <p className="field-hint calendar-note">
-                  Opens Google Calendar with this event pre-filled after ticket
-                  005. You will review and save it there.
+                  Opens Google Calendar in a new tab with this event pre-filled.
+                  The event is not created until you review and save it there.
                 </p>
               </div>
             </div>
