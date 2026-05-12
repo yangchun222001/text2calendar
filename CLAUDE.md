@@ -13,8 +13,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Commands:
 
 ```bash
-# Frontend commands will live under frontend/
-# Backend commands will live under backend/
+# Frontend (frontend/)
+cd frontend && npm install
+cd frontend && npm run dev      # http://localhost:5173, proxies /api -> backend
+cd frontend && npm run build
+cd frontend && npm test         # vitest: extraction schema helpers
+
+# Backend (backend/)
+cd backend && python3 -m venv .venv && source .venv/bin/activate
+cd backend && pip install -r requirements.txt
+cd backend && pytest            # schema / API contract tests
+cd backend && python app.py     # http://127.0.0.1:5000
 ```
 
 ---

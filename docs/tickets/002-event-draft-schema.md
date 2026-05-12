@@ -34,7 +34,55 @@ The schema should support these draft fields: title, date, start time, end time,
 
 ## Plan
 
+### Execution Plan
 
+Define a canonical JSON Schema bundle under `shared/schemas/` as the single source of truth for `EventDraft`, `ExtractionWarning`, `ExtractEventRequest`, `ExtractEventResponse`, and `ExtractEventError`. Add runtime validation with `jsonschema` (backend) and `ajv` (frontend), plus semantic checks for `missingStartTime` vs `startTime`. Keep raw text only on the request object, never on `EventDraft`. Wire `POST /api/extract-event` to validate the request body after the empty-text check; defer LLM and response shaping to ticket 003.
+
+```mermaid
+flowchart LR
+  schema[Canonical JSON Schemas] --> backendValidators[Backend Validators]
+  schema --> frontendValidators[Frontend Validators]
+  backendValidators --> extractRoute[POST /api/extract-event]
+  frontendValidators --> uiHelpers[UI Helper Tests]
+  extractRoute --> response[Validated ExtractEventResponse]
+```
+
+### Questions
+
+_No open questions; strategy is canonical JSON Schema plus `jsonschema` and `ajv`._
+
+### Steps
+
+1. Add `shared/schemas/extraction.schemas.json` with `$defs` for all contract types and internal `$ref` links.
+2. Implement `backend/validators.py` to load the bundle, validate by `$def`, and enforce draft semantics (`missingStartTime` iff `startTime` is null).
+3. Add `jsonschema` and `pytest` to backend dependencies; add `backend/tests/` for schema and semantic cases.
+4. Add `ajv` and `vitest` to the frontend; implement `frontend/src/validation/extraction.js` mirroring backend behavior.
+5. Add `frontend/src/validation/extraction.test.js` with the same fixtures as backend where practical.
+6. Update `POST /api/extract-event` to return `400` with `INVALID_REQUEST` when the request body fails schema validation (after `EMPTY_INPUT`).
+7. Run `pytest`, `npm test`, and `npm run build` to verify.
+
+### Files To Touch
+
+- `shared/schemas/extraction.schemas.json`
+- `backend/requirements.txt`, `backend/validators.py`, `backend/app.py`
+- `backend/tests/test_extraction_schemas.py`
+- `frontend/package.json`, `frontend/package-lock.json`, `frontend/vite.config.js`
+- `frontend/src/validation/extraction.js`, `frontend/src/validation/extraction.test.js`
 
 ## Execution
+
+### Execution Summary
+
+- Added canonical bundle [shared/schemas/extraction.schemas.json](shared/schemas/extraction.schemas.json) (`$defs` for `EventDraft`, `ExtractionWarning`, `ExtractEventRequest`, `ExtractEventResponse`, `ExtractEventError`) including `INVALID_REQUEST` on errors for request validation.
+- Backend: [backend/validators.py](backend/validators.py) (`jsonschema` + `referencing`), [backend/pytest.ini](backend/pytest.ini), and [backend/tests/test_extraction_schemas.py](backend/tests/test_extraction_schemas.py). `POST /api/extract-event` validates the request after `EMPTY_INPUT` ([backend/app.py](backend/app.py)).
+- Frontend: [frontend/src/validation/extraction.js](frontend/src/validation/extraction.js) (`ajv`), Vitest in [frontend/vite.config.js](frontend/vite.config.js), tests in [frontend/src/validation/extraction.test.js](frontend/src/validation/extraction.test.js).
+- Docs: [CLAUDE.md](CLAUDE.md) and [backend/README.md](backend/README.md) updated with test commands.
+
+### Commits
+
+- _Pending user request to commit._
+
+### Notes
+
+Verification: `pytest` (17 passed), `npm test` (13 passed), `npm run build` (success).
 
