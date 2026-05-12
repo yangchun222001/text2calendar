@@ -22,7 +22,7 @@ Cover the core MVP behavior with automated tests that can run locally and in CI.
 
 ### Description
 
-Add tests for event draft schema validation, empty input handling, guest email validation, Google Calendar URL generation, timezone-aware date/time formatting, and the PRD sample extraction behavior. Add UI tests for paste, generate, edit, guest entry, validation errors, and opening the Google Calendar URL.
+Add tests for event draft schema validation, Flask API empty input handling, backend timezone validation, guest email validation, Google Calendar URL generation, timezone-aware date/time formatting, and the PRD sample extraction behavior. Add UI tests for paste, generate, edit, guest entry, validation errors, and opening the Google Calendar URL.
 
 Where LLM output would make tests unstable, use mocks or fixtures for the extraction service and keep one or more integration-style tests focused on prompt/output validation rather than live model calls.
 
@@ -30,6 +30,7 @@ Where LLM output would make tests unstable, use mocks or fixtures for the extrac
 
 - Source docs: `docs/tech/tech_design.md` section 11.
 - Source docs: `docs/prd/prd.md` sections 3, 9, and 11.
+- Include focused Flask backend tests for `POST /api/extract-event`.
 - Tests should avoid sending real private event text to external services during normal runs.
 
 ## Plan
@@ -37,5 +38,4 @@ Where LLM output would make tests unstable, use mocks or fixtures for the extrac
 
 
 ## Execution
-
 
