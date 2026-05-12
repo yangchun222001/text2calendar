@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   buildGoogleCalendarUrl,
+  isValidTimezone,
   validateCalendarDraft,
+  validateRawEventText,
 } from "./calendarUrl.js";
 
 function validDraft(overrides = {}) {
@@ -63,6 +65,9 @@ describe("validateCalendarDraft", () => {
   it("blocks missing date", () => {
     expect(validateCalendarDraft(validDraft({ date: "" }))).toMatchObject({
       valid: false,
+      fieldErrors: {
+        date: "Add a valid date before opening Google Calendar.",
+      },
     });
   });
 
@@ -76,21 +81,63 @@ describe("validateCalendarDraft", () => {
 
   it("blocks invalid guest emails", () => {
     expect(
-      validateCalendarDraft(validDraft({ guests: ["not-an-email"] })).errors,
-    ).toContain("Remove or fix invalid guest email addresses before opening.");
+      validateCalendarDraft(validDraft({ guests: ["not-an-email"] }))
+        .fieldErrors,
+    ).toMatchObject({
+      guests: "Remove or fix invalid guest email addresses before opening.",
+    });
   });
 
   it("blocks end time that is not after start time", () => {
     expect(
       validateCalendarDraft(
         validDraft({ startTime: "18:30", endTime: "18:30" }),
-      ).errors,
-    ).toContain("End time must be after start time.");
+      ).fieldErrors,
+    ).toMatchObject({
+      endTime: "End time must be after start time.",
+    });
   });
 
   it("accepts an empty end time", () => {
     expect(validateCalendarDraft(validDraft({ endTime: null }))).toMatchObject({
       valid: true,
     });
+  });
+
+  it("blocks invalid timezone values", () => {
+    expect(
+      validateCalendarDraft(validDraft({ timezone: "Mars/Olympus_Mons" }))
+        .fieldErrors,
+    ).toMatchObject({
+      timezone: "Use a valid IANA timezone, such as America/Los_Angeles.",
+    });
+  });
+});
+
+describe("validateRawEventText", () => {
+  it("rejects blank or whitespace-only text", () => {
+    expect(validateRawEventText("   ")).toEqual({
+      valid: false,
+      message: "Paste event text before generating.",
+    });
+  });
+
+  it("accepts non-empty text after trimming", () => {
+    expect(validateRawEventText("  Dinner tomorrow  ")).toEqual({
+      valid: true,
+      message: "",
+    });
+  });
+});
+
+describe("isValidTimezone", () => {
+  it("accepts UTC and IANA timezone names", () => {
+    expect(isValidTimezone("UTC")).toBe(true);
+    expect(isValidTimezone("America/Los_Angeles")).toBe(true);
+  });
+
+  it("rejects empty and unknown timezone names", () => {
+    expect(isValidTimezone("")).toBe(false);
+    expect(isValidTimezone("Not/A_Timezone")).toBe(false);
   });
 });

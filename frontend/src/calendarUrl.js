@@ -5,8 +5,26 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
+export function validateRawEventText(value) {
+  const valid = typeof value === "string" && value.trim().length > 0;
+  return {
+    valid,
+    message: valid ? "" : "Paste event text before generating.",
+  };
+}
+
 export function isValidEmail(value) {
   return EMAIL_RE.test(value);
+}
+
+export function isValidTimezone(value) {
+  if (typeof value !== "string" || !value.trim()) return false;
+  try {
+    Intl.DateTimeFormat("en-US", { timeZone: value.trim() });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function parseDate(value) {
@@ -69,42 +87,59 @@ function dateTimeFromMinutes(minutes) {
 
 export function validateCalendarDraft(draft) {
   const errors = [];
+  const fieldErrors = {};
   const dateParts = parseDate(draft?.date ?? "");
   const startTimeValue = draft?.startTime ?? "";
   const startTime = parseTime(startTimeValue);
   const endTimeValue = draft?.endTime ?? "";
   const endTime = endTimeValue ? parseTime(endTimeValue) : null;
+  const timezoneValue = draft?.timezone ?? "";
   const guests = Array.isArray(draft?.guests) ? draft.guests : [];
 
   if (!dateParts) {
-    errors.push("Add a valid date before opening Google Calendar.");
+    fieldErrors.date = "Add a valid date before opening Google Calendar.";
+    errors.push(fieldErrors.date);
   }
 
   if (draft?.missingStartTime || !startTimeValue) {
-    errors.push("Add a start time before opening Google Calendar.");
+    fieldErrors.startTime = "Add a start time before opening Google Calendar.";
+    errors.push(fieldErrors.startTime);
   } else if (!startTime) {
-    errors.push("Use a valid start time in HH:mm format.");
+    fieldErrors.startTime = "Use a valid start time in HH:mm format.";
+    errors.push(fieldErrors.startTime);
   }
 
   if (endTimeValue && !endTime) {
-    errors.push("Use a valid end time in HH:mm format, or leave it empty.");
+    fieldErrors.endTime =
+      "Use a valid end time in HH:mm format, or leave it empty.";
+    errors.push(fieldErrors.endTime);
   }
 
   if (dateParts && startTime && endTime) {
     const startMinutes = dateTimeToMinutes(dateParts, startTime);
     const endMinutes = dateTimeToMinutes(dateParts, endTime);
     if (endMinutes <= startMinutes) {
-      errors.push("End time must be after start time.");
+      fieldErrors.endTime = "End time must be after start time.";
+      errors.push(fieldErrors.endTime);
     }
   }
 
+  if (!isValidTimezone(timezoneValue)) {
+    fieldErrors.timezone =
+      "Use a valid IANA timezone, such as America/Los_Angeles.";
+    errors.push(fieldErrors.timezone);
+  }
+
   if (guests.some((guest) => !isValidEmail(guest))) {
-    errors.push("Remove or fix invalid guest email addresses before opening.");
+    fieldErrors.guests =
+      "Remove or fix invalid guest email addresses before opening.";
+    errors.push(fieldErrors.guests);
   }
 
   return {
     valid: errors.length === 0,
     errors,
+    fieldErrors,
   };
 }
 

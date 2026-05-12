@@ -2,7 +2,9 @@ import { useCallback, useState } from "react";
 import {
   buildGoogleCalendarUrl,
   isValidEmail,
+  isValidTimezone,
   validateCalendarDraft,
+  validateRawEventText,
 } from "./calendarUrl.js";
 import {
   validateExtractEventError,
@@ -64,13 +66,16 @@ export default function App() {
   const [draft, setDraft] = useState(null);
   const [warnings, setWarnings] = useState([]);
   const [inputError, setInputError] = useState("");
+  const [timezoneError, setTimezoneError] = useState("");
   const [apiError, setApiError] = useState("");
   const [calendarError, setCalendarError] = useState("");
+  const [calendarValidation, setCalendarValidation] = useState(null);
   const [guestInput, setGuestInput] = useState("");
   const [guestError, setGuestError] = useState(false);
 
   const updateDraft = useCallback((field, value) => {
     setCalendarError("");
+    setCalendarValidation(null);
     setDraft((d) => {
       if (!d) return d;
       if (field === "startTime") {
@@ -90,8 +95,10 @@ export default function App() {
     setDraft(null);
     setWarnings([]);
     setInputError("");
+    setTimezoneError("");
     setApiError("");
     setCalendarError("");
+    setCalendarValidation(null);
     setGuestInput("");
     setGuestError(false);
   };
@@ -102,6 +109,7 @@ export default function App() {
     if (!isValidEmail(v)) {
       setGuestError(true);
       setCalendarError("");
+      setCalendarValidation(null);
       return;
     }
     setDraft((d) => {
@@ -116,10 +124,12 @@ export default function App() {
     setGuestInput("");
     setGuestError(false);
     setCalendarError("");
+    setCalendarValidation(null);
   };
 
   const removeGuest = (email) => {
     setCalendarError("");
+    setCalendarValidation(null);
     setDraft((d) =>
       d ? { ...d, guests: d.guests.filter((g) => g !== email) } : d,
     );
@@ -129,30 +139,44 @@ export default function App() {
     if (!draft) return;
     const validation = validateCalendarDraft(draft);
     if (!validation.valid) {
-      setCalendarError(validation.errors[0]);
+      setCalendarValidation(validation);
+      setCalendarError(
+        "Fix the highlighted fields before opening Google Calendar.",
+      );
       return;
     }
 
     const url = buildGoogleCalendarUrl(draft);
     const opened = window.open(url, "_blank", "noopener,noreferrer");
     if (!opened) {
+      setCalendarValidation(null);
       setCalendarError(
         "Your browser blocked the new tab. Allow pop-ups for this site and try again.",
       );
       return;
     }
     setCalendarError("");
+    setCalendarValidation(null);
   };
 
   const generate = async () => {
-    const trimmed = text.trim();
-    if (!trimmed) {
-      setInputError("Paste event text before generating.");
+    const rawValidation = validateRawEventText(text);
+    const tzValidation = isValidTimezone(timezone);
+    if (!rawValidation.valid) {
+      setInputError(rawValidation.message);
+    }
+    if (!tzValidation) {
+      setTimezoneError("Use a valid IANA timezone before generating.");
+    }
+    if (!rawValidation.valid || !tzValidation) {
       return;
     }
+    const trimmed = text.trim();
     setInputError("");
+    setTimezoneError("");
     setApiError("");
     setCalendarError("");
+    setCalendarValidation(null);
     setStatus(ExtractionState.LOADING);
 
     const body = {
@@ -213,6 +237,7 @@ export default function App() {
 
   const showDraft = draft && status !== ExtractionState.LOADING;
   const showIdlePlaceholder = status === ExtractionState.IDLE;
+  const fieldErrors = calendarValidation?.fieldErrors ?? {};
 
   return (
     <div className="app">
@@ -243,6 +268,7 @@ export default function App() {
             placeholder="Paste an email, message, flyer text, or event description…"
             rows={14}
             disabled={status === ExtractionState.LOADING}
+            aria-invalid={Boolean(inputError)}
           />
           {inputError ? (
             <p className="inline-error" role="alert">
@@ -259,9 +285,13 @@ export default function App() {
               className="input"
               list="common-timezones"
               value={timezone}
-              onChange={(e) => setTimezone(e.target.value)}
+              onChange={(e) => {
+                setTimezone(e.target.value);
+                setTimezoneError("");
+              }}
               disabled={status === ExtractionState.LOADING}
               autoComplete="off"
+              aria-invalid={Boolean(timezoneError)}
             />
             <datalist id="common-timezones">
               {COMMON_TIMEZONES.map((tz) => (
@@ -272,6 +302,11 @@ export default function App() {
               IANA name (e.g. America/Los_Angeles). Sent with your text to the
               extractor.
             </p>
+            {timezoneError ? (
+              <p className="inline-error tight" role="alert">
+                {timezoneError}
+              </p>
+            ) : null}
           </div>
 
           <div className="actions">
@@ -384,7 +419,13 @@ export default function App() {
                     className="input"
                     value={draft.date}
                     onChange={(e) => updateDraft("date", e.target.value)}
+                    aria-invalid={Boolean(fieldErrors.date)}
                   />
+                  {fieldErrors.date ? (
+                    <p className="inline-error tight" role="alert">
+                      {fieldErrors.date}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="field-row">
                   <div className="field">
@@ -396,8 +437,13 @@ export default function App() {
                       className="input"
                       value={draft.startTime ?? ""}
                       onChange={(e) => updateDraft("startTime", e.target.value)}
-                      aria-invalid={draft.missingStartTime}
+                      aria-invalid={Boolean(fieldErrors.startTime)}
                     />
+                    {fieldErrors.startTime ? (
+                      <p className="inline-error tight" role="alert">
+                        {fieldErrors.startTime}
+                      </p>
+                    ) : null}
                     <p className="field-hint tight">
                       24-hour local time, e.g. 17:15. Required for a useful
                       calendar event.
@@ -411,11 +457,17 @@ export default function App() {
                       id="f-end"
                       className="input"
                       value={draft.endTime ?? ""}
+                      aria-invalid={Boolean(fieldErrors.endTime)}
                       onChange={(e) => {
                         const v = e.target.value.trim();
                         updateDraft("endTime", v === "" ? null : v);
                       }}
                     />
+                    {fieldErrors.endTime ? (
+                      <p className="inline-error tight" role="alert">
+                        {fieldErrors.endTime}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
                 <div className="field">
@@ -427,7 +479,13 @@ export default function App() {
                     className="input"
                     value={draft.timezone}
                     onChange={(e) => updateDraft("timezone", e.target.value)}
+                    aria-invalid={Boolean(fieldErrors.timezone)}
                   />
+                  {fieldErrors.timezone ? (
+                    <p className="inline-error tight" role="alert">
+                      {fieldErrors.timezone}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="field">
                   <label className="field-label" htmlFor="f-loc">
@@ -500,6 +558,11 @@ export default function App() {
                   {guestError ? (
                     <p className="inline-error tight" role="alert">
                       Enter a valid email address.
+                    </p>
+                  ) : null}
+                  {fieldErrors.guests ? (
+                    <p className="inline-error tight" role="alert">
+                      {fieldErrors.guests}
                     </p>
                   ) : null}
                   {draft.guests.length > 0 ? (
