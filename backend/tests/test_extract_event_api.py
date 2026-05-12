@@ -54,7 +54,10 @@ def test_extract_event_invalid_request(client):
 
 
 def test_extract_event_invalid_timezone(client):
-    rv = client.post("/api/extract-event", json=_valid_body(timezone="Not/A_Real_Zone_999"))
+    rv = client.post(
+        "/api/extract-event",
+        json=_valid_body(timezone="Not/A_Real_Zone_999"),
+    )
     assert rv.status_code == 400
     body = rv.get_json()
     assert body["error"]["code"] == "INVALID_REQUEST"
@@ -74,6 +77,77 @@ def test_extract_event_success_with_fake_extractor(client):
     data = rv.get_json()
     assert data["draft"]["title"] == "Party"
     assert data["warnings"] == []
+
+
+def test_extract_event_prd_sample_fixture(client):
+    sample = (
+        '5/6 : Wednesday May 6th will be our "Restaurant Night" Fundraiser at '
+        "the Foster City Food Trucks at Leo J. Ryan Park. If you choose to "
+        "participate, bring your child to the event at 5:15 to check in with "
+        "Mrs. Lazar (finding parking is difficult, so plan ahead). Performances "
+        "will be between 5:30 and 6:00pm. Please send your child in the their "
+        "Beach Park T-Shirt."
+    )
+
+    def fake_extract(payload):
+        assert "Restaurant Night" in payload["text"]
+        return {
+            "draft": _valid_draft(
+                title="Nora Performance @ Food Truck Night",
+                date="2026-05-06",
+                startTime="17:15",
+                endTime="18:00",
+                location="Foster City Food Trucks at Leo J. Ryan Park",
+                notes=(
+                    "5:15 check-in with Mrs. Lazar\n"
+                    "5:30-6:00 performance\n"
+                    "Wear Beach Park T-Shirt\n"
+                    "Parking is difficult, plan ahead"
+                ),
+            ),
+            "warnings": [],
+        }
+
+    app.config["EXTRACT_EVENT_FN"] = fake_extract
+    rv = client.post("/api/extract-event", json=_valid_body(text=sample))
+    body = rv.get_json()
+
+    assert rv.status_code == 200
+    assert body["draft"]["title"] == "Nora Performance @ Food Truck Night"
+    assert body["draft"]["startTime"] == "17:15"
+    assert body["draft"]["endTime"] == "18:00"
+    assert "Parking is difficult" in body["draft"]["notes"]
+
+
+def test_extract_event_default_duration_fixture(client):
+    def fake_extract(_payload):
+        return {
+            "draft": _valid_draft(
+                title="Dentist Appointment",
+                date="2026-05-13",
+                startTime="09:30",
+                endTime="10:30",
+                notes="Duration was not provided.",
+            ),
+            "warnings": [
+                {
+                    "field": "endTime",
+                    "code": "DEFAULT_DURATION",
+                    "message": "No duration found; defaulted to one hour.",
+                }
+            ],
+        }
+
+    app.config["EXTRACT_EVENT_FN"] = fake_extract
+    rv = client.post(
+        "/api/extract-event",
+        json=_valid_body(text="Dentist at 9:30"),
+    )
+    body = rv.get_json()
+
+    assert rv.status_code == 200
+    assert body["draft"]["endTime"] == "10:30"
+    assert body["warnings"][0]["code"] == "DEFAULT_DURATION"
 
 
 def test_extract_event_missing_start_time_response(client):
@@ -99,6 +173,38 @@ def test_extract_event_missing_start_time_response(client):
     body = rv.get_json()
     assert body["draft"]["missingStartTime"] is True
     assert body["draft"]["startTime"] is None
+
+
+def test_extract_event_multiple_times_fixture(client):
+    def fake_extract(_payload):
+        return {
+            "draft": _valid_draft(
+                title="School Performance",
+                date="2026-05-06",
+                startTime="17:15",
+                endTime="18:00",
+                notes="Check in at 5:15\nPerformance 5:30-6:00",
+            ),
+            "warnings": [
+                {
+                    "field": "startTime",
+                    "code": "MULTIPLE_POSSIBLE_TIMES",
+                    "message": "Selected check-in time as the event start.",
+                }
+            ],
+        }
+
+    app.config["EXTRACT_EVENT_FN"] = fake_extract
+    rv = client.post(
+        "/api/extract-event",
+        json=_valid_body(text="Check in at 5:15, performance 5:30-6:00"),
+    )
+    body = rv.get_json()
+
+    assert rv.status_code == 200
+    assert body["draft"]["startTime"] == "17:15"
+    assert "Performance 5:30-6:00" in body["draft"]["notes"]
+    assert body["warnings"][0]["code"] == "MULTIPLE_POSSIBLE_TIMES"
 
 
 def test_extract_event_extraction_error_llm_failed(client):
