@@ -1,5 +1,7 @@
 # Text to Calendar
 
+![alt text](image.png)
+
 Text to Calendar is an MVP web app that turns unstructured event text into an
 editable calendar draft, then opens a pre-filled Google Calendar event.
 
