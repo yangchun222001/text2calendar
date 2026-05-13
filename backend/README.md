@@ -35,7 +35,7 @@ Tests inject `app.config["EXTRACT_EVENT_FN"]` so they never call the network.
 ## Run
 
 ```bash
-python app.py          # http://127.0.0.1:5000
+python app.py          # http://127.0.0.1:5001
 ```
 
 ## Endpoints

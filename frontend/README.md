@@ -17,4 +17,4 @@ npm run preview  # Preview the production build
 npm run format   # Format files with Prettier
 ```
 
-The dev server proxies `/api/*` to the Flask backend at `http://127.0.0.1:5000`.
+The dev server proxies `/api/*` to the Flask backend at `http://127.0.0.1:5001`.

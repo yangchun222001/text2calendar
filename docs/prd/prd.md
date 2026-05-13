@@ -1,7 +1,6 @@
 # Calendar Tool PRD
 
 ## 1. Overview
-![alt text](image.png)
 
 This product is a simple web page that converts unstructured event text into a clean Google Calendar event. A user pastes text into an input box, the app uses an LLM to extract the event details, shows a human-readable preview, and lets the user open a pre-filled Google Calendar event creation page.
 

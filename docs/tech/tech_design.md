@@ -83,7 +83,7 @@ The API key must never be exposed to the browser.
 
 ## 4. Frontend Design
 
-![alt text](homepage.png)
+![alt text](image-5.png)
 
 The demo already establishes the main UI contract:
 

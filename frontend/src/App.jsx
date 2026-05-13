@@ -259,7 +259,7 @@ export default function App() {
       }
     } catch {
       setApiError(
-        "Network error. Is the backend running (e.g. python app.py on port 5000)?",
+        "Network error. Is the backend running (e.g. python app.py on port 5001)?",
       );
       setStatus(ExtractionState.ERROR);
     }

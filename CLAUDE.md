@@ -23,7 +23,7 @@ cd frontend && npm test         # vitest: extraction schema helpers
 cd backend && python3 -m venv .venv && source .venv/bin/activate
 cd backend && pip install -r requirements.txt
 cd backend && pytest            # schema / API contract tests
-cd backend && python app.py     # http://127.0.0.1:5000
+cd backend && python app.py     # http://127.0.0.1:5001
 ```
 
 ---
