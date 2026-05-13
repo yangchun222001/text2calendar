@@ -43,6 +43,7 @@ async function generateDraft(user, text = "Restaurant night at 5:15") {
 }
 
 beforeEach(() => {
+  window.localStorage.clear();
   vi.stubGlobal("fetch", vi.fn());
   vi.stubGlobal(
     "open",
@@ -52,6 +53,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -111,6 +113,34 @@ describe("App MVP flow", () => {
 
     expect(screen.getByText("Enter a valid email address.")).toBeTruthy();
     expect(globalThis.open).not.toHaveBeenCalled();
+  });
+
+  it("offers recently added guests as input suggestions", async () => {
+    window.localStorage.setItem(
+      "calendar-tool-recent-guests",
+      JSON.stringify(["alex@example.com"]),
+    );
+    mockExtraction();
+    const user = userEvent.setup();
+
+    const { container } = render(<App />);
+    await generateDraft(user);
+
+    expect(
+      container.querySelector(
+        'datalist#guest-suggestions option[value="alex@example.com"]',
+      ),
+    ).toBeTruthy();
+    await user.type(screen.getByLabelText("Guests"), "alex@example.com");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(
+      screen.getByRole("button", { name: "Add to Google Calendar" }),
+    );
+
+    const openedUrl = globalThis.open.mock.calls[0][0];
+    expect(new URL(openedUrl).searchParams.getAll("add")).toEqual([
+      "alex@example.com",
+    ]);
   });
 
   it("blocks opening Google Calendar when start time is missing", async () => {

@@ -35,6 +35,33 @@ const COMMON_TIMEZONES = [
   "Australia/Sydney",
 ];
 
+const RECENT_GUESTS_STORAGE_KEY = "calendar-tool-recent-guests";
+const MAX_RECENT_GUESTS = 12;
+
+function loadRecentGuests() {
+  try {
+    const raw = window.localStorage.getItem(RECENT_GUESTS_STORAGE_KEY);
+    const parsed = JSON.parse(raw ?? "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((guest) => typeof guest === "string" && isValidEmail(guest))
+      .slice(0, MAX_RECENT_GUESTS);
+  } catch {
+    return [];
+  }
+}
+
+function saveRecentGuests(guests) {
+  try {
+    window.localStorage.setItem(
+      RECENT_GUESTS_STORAGE_KEY,
+      JSON.stringify(guests),
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
 function getDefaultTimezone() {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -72,6 +99,7 @@ export default function App() {
   const [calendarValidation, setCalendarValidation] = useState(null);
   const [guestInput, setGuestInput] = useState("");
   const [guestError, setGuestError] = useState(false);
+  const [recentGuests, setRecentGuests] = useState(loadRecentGuests);
 
   const updateDraft = useCallback((field, value) => {
     setCalendarError("");
@@ -112,6 +140,14 @@ export default function App() {
       setCalendarValidation(null);
       return;
     }
+    setRecentGuests((previous) => {
+      const next = [
+        v,
+        ...previous.filter((guest) => guest.toLowerCase() !== v.toLowerCase()),
+      ].slice(0, MAX_RECENT_GUESTS);
+      saveRecentGuests(next);
+      return next;
+    });
     setDraft((d) => {
       if (!d) return d;
       if (d.guests.includes(v)) {
@@ -238,6 +274,9 @@ export default function App() {
   const showDraft = draft && status !== ExtractionState.LOADING;
   const showIdlePlaceholder = status === ExtractionState.IDLE;
   const fieldErrors = calendarValidation?.fieldErrors ?? {};
+  const guestSuggestions = recentGuests.filter(
+    (guest) => !draft?.guests.includes(guest),
+  );
 
   return (
     <div className="app">
@@ -533,6 +572,7 @@ export default function App() {
                     <input
                       id="f-guest"
                       className="input guest-input"
+                      list="guest-suggestions"
                       placeholder="name@example.com"
                       value={guestInput}
                       onChange={(e) => {
@@ -547,6 +587,11 @@ export default function App() {
                         }
                       }}
                     />
+                    <datalist id="guest-suggestions">
+                      {guestSuggestions.map((guest) => (
+                        <option key={guest} value={guest} />
+                      ))}
+                    </datalist>
                     <button
                       type="button"
                       className="btn-secondary btn-small"
