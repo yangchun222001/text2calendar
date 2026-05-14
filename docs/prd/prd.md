@@ -96,7 +96,7 @@ The event draft should include:
 - Timezone
 - Location
 - Notes
-- Whether the start time is missing
+- Whether the start time was defaulted
 
 Extraction behavior:
 
@@ -106,7 +106,7 @@ Extraction behavior:
 - Prefer information explicitly stated in the event text.
 - If the event text omits the year or month, default to the nearest reasonable upcoming date using the current date as context.
 - If the event text does not include an end time, duration, or other clear signal for event length, default the event duration to 1 hour.
-- If the event text does not include a start time, ask the user to fill it in before opening Google Calendar.
+- If the event text does not include a clear start time, default the start time to 10:00 AM and make that default visible/editable in the preview.
 - Other fields can use LLM-generated values or product defaults, and the user can edit them in the preview.
 - Use the user's local timezone by default.
 
@@ -115,7 +115,7 @@ Extraction behavior:
 - The app must show the extracted event before creating anything.
 - Every extracted field must be editable.
 - Notes should be easy to scan, preferably bullet-style or short lines.
-- Missing start time should be clearly indicated because it is required to create a useful calendar event.
+- A defaulted start time should be clearly indicated so the user can review or edit it before opening Google Calendar.
 - The user must be able to regenerate after editing the source input.
 
 ### 7.4 Guests
@@ -157,7 +157,7 @@ MVP should support Google Calendar through a pre-filled Google Calendar event li
 - Input may include details that belong in notes rather than the calendar title.
 - If year or month is missing, the app should default to the nearest reasonable upcoming date and let the user edit it in the preview.
 - If event length is missing, the app should use a 1-hour default and let the user edit it in the preview.
-- If start time is missing, the app should ask the user to fill it in before opening Google Calendar.
+- If start time is missing, the app should default to 10:00 AM and let the user edit it in the preview.
 - If event extraction fails, the app should show a clear error and let the user try again.
 
 ## 10. Privacy And Safety

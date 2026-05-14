@@ -93,7 +93,7 @@ The demo already establishes the main UI contract:
   - Right: editable calendar draft.
 - Stacked mobile layout.
 - Generated draft visible after extraction.
-- Clear loading, empty, missing-start-time, and invalid-guest-email states.
+- Clear loading, empty, defaulted-start-time, and invalid-guest-email states.
 
 Primary frontend state:
 
@@ -184,6 +184,7 @@ Potential warnings:
   field: keyof EventDraft | "general",
   code:
     | "INFERRED_DATE"
+    | "DEFAULT_START_TIME"
     | "DEFAULT_DURATION"
     | "MISSING_START_TIME"
     | "LOW_CONFIDENCE"
@@ -215,7 +216,7 @@ Model rules:
 - Preserve attendance instructions, reminders, caveats, and logistics in notes.
 - If month/year is missing, choose the nearest reasonable upcoming date.
 - If duration/end time is missing, default to one hour and emit `DEFAULT_DURATION`.
-- If start time is missing, return `startTime: null` and `missingStartTime: true`.
+- If start time is missing or unclear, default to `startTime: "10:00"`, set `missingStartTime: false`, and emit `DEFAULT_START_TIME`.
 - If multiple times are present, choose the time that best represents when the user should arrive or attend, and preserve other times in notes.
 
 The server should validate model output before returning it to the browser.
@@ -232,7 +233,8 @@ The URL builder should map:
 - `notes` to details.
 - `guests` to the guest parameter if supported.
 
-The frontend should block opening Google Calendar if `startTime` is missing.
+The frontend should allow Google Calendar opening when the backend provides the
+default `10:00` start time, while making the default easy to review and edit.
 
 If guest prefill is unreliable, the fallback is to include guest emails in notes and let the user add them manually in Google Calendar.
 
@@ -243,7 +245,8 @@ If guest prefill is unreliable, the fallback is to include guest emails in notes
 Client-side validation:
 
 - Raw text is required before extraction.
-- Start time is required before opening Google Calendar.
+- Start time is required before opening Google Calendar; missing source times
+  should arrive from the API as the editable `10:00` default.
 - Guest emails must be valid before adding them to the draft.
 - End time should be after start time when both are present.
 - Date must be present before opening Google Calendar.
@@ -281,7 +284,7 @@ Extraction tests:
 
 - PRD sample input.
 - Missing end time defaults to one hour.
-- Missing start time blocks calendar creation.
+- Missing start time defaults to 10:00 AM and still allows calendar creation after validation.
 - Relative dates like "tomorrow" or "next Wednesday".
 - Multiple times such as arrival/check-in/performance.
 
@@ -290,7 +293,7 @@ UI tests:
 - User can paste text, generate a draft, edit fields, add a guest, and open the calendar URL.
 - Empty input shows validation.
 - Invalid guest email shows validation.
-- Missing start time disables or blocks the Google Calendar action.
+- Defaulted start time is shown and can be used to open Google Calendar.
 
 ## 12. Future Extensions
 
