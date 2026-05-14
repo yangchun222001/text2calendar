@@ -9,7 +9,7 @@ Paste event details from an email, message, flyer, newsletter, or webpage. The
 app extracts the title, date, time, location, notes, timezone, and guests, lets
 you review everything, and then hands off to Google Calendar for final saving.
 
-[text](https://text2calendar.tinyworks.dev/)
+[https://text2calendar.tinyworks.dev](https://text2calendar.tinyworks.dev/)
 
 ## Features
 
