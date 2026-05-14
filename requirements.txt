@@ -1,1 +1,6 @@
--r backend/requirements.txt
+flask>=3.0
+gunicorn>=23.0
+python-dotenv>=1.0
+jsonschema>=4.22
+
+pytest>=8.0
