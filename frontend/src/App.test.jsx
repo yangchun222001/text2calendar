@@ -76,6 +76,7 @@ describe("App MVP flow", () => {
     );
 
     expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    expect(globalThis.fetch.mock.calls[0][0]).toBe("/api/extract-event");
     const request = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
     expect(request.text).toBe("Restaurant night at 5:15");
     expect(globalThis.open).toHaveBeenCalledTimes(1);
@@ -177,5 +178,35 @@ describe("App MVP flow", () => {
       screen.getByText("Add a start time before opening Google Calendar."),
     ).toBeTruthy();
     expect(globalThis.open).not.toHaveBeenCalled();
+  });
+
+  it("opens Google Calendar when the API returns the default 10 AM start time", async () => {
+    mockExtraction(
+      draft({
+        startTime: "10:00",
+        endTime: "11:00",
+        missingStartTime: false,
+      }),
+      [
+        {
+          field: "startTime",
+          code: "DEFAULT_START_TIME",
+          message: "No clear start time found; defaulted to 10:00 AM.",
+        },
+      ],
+    );
+    const user = userEvent.setup();
+
+    render(<App />);
+    await generateDraft(user, "School fundraiser tomorrow");
+    await user.click(
+      screen.getByRole("button", { name: "Add to Google Calendar" }),
+    );
+
+    expect(globalThis.open).toHaveBeenCalledTimes(1);
+    const openedUrl = globalThis.open.mock.calls[0][0];
+    expect(new URL(openedUrl).searchParams.get("dates")).toBe(
+      "20260506T100000/20260506T110000",
+    );
   });
 });

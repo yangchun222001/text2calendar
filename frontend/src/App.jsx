@@ -37,6 +37,14 @@ const COMMON_TIMEZONES = [
 
 const RECENT_GUESTS_STORAGE_KEY = "calendar-tool-recent-guests";
 const MAX_RECENT_GUESTS = 12;
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(
+  /\/$/,
+  "",
+);
+
+function apiPath(path) {
+  return `${API_BASE_URL}${path}`;
+}
 
 function loadRecentGuests() {
   try {
@@ -223,7 +231,7 @@ export default function App() {
     };
 
     try {
-      const res = await fetch("/api/extract-event", {
+      const res = await fetch(apiPath("/api/extract-event"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -259,7 +267,7 @@ export default function App() {
       }
     } catch {
       setApiError(
-        "Network error. Is the backend running (e.g. python app.py on port 5001)?",
+        "Network error. Is the backend running and reachable?",
       );
       setStatus(ExtractionState.ERROR);
     }

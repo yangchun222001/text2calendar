@@ -47,6 +47,30 @@ def test_extract_event_empty_input(client):
     assert rv.get_json()["error"]["code"] == "EMPTY_INPUT"
 
 
+def test_api_cors_allows_configured_origin(client, monkeypatch):
+    monkeypatch.setenv("ALLOWED_ORIGINS", "https://calendarai.tinyworks.dev")
+
+    rv = client.get(
+        "/api/health", headers={"Origin": "https://calendarai.tinyworks.dev"}
+    )
+
+    assert rv.status_code == 200
+    assert (
+        rv.headers["Access-Control-Allow-Origin"]
+        == "https://calendarai.tinyworks.dev"
+    )
+    assert rv.headers["Access-Control-Allow-Methods"] == "GET, POST, OPTIONS"
+    assert rv.headers["Access-Control-Allow-Headers"] == "Content-Type"
+
+
+def test_api_cors_omits_unconfigured_origin(client, monkeypatch):
+    monkeypatch.setenv("ALLOWED_ORIGINS", "https://calendarai.tinyworks.dev")
+
+    rv = client.get("/api/health", headers={"Origin": "https://example.com"})
+
+    assert "Access-Control-Allow-Origin" not in rv.headers
+
+
 def test_extract_event_invalid_request(client):
     rv = client.post("/api/extract-event", json={"text": "hello"})
     assert rv.status_code == 400

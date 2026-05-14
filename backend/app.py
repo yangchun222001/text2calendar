@@ -21,6 +21,23 @@ SAFE_EXTRACTION_ERROR_MESSAGES = {
 }
 
 
+def _allowed_origins() -> set[str]:
+    raw = os.environ.get("ALLOWED_ORIGINS", "")
+    return {origin.strip().rstrip("/") for origin in raw.split(",") if origin.strip()}
+
+
+@app.after_request
+def add_cors_headers(response):
+    origin = (request.headers.get("Origin") or "").rstrip("/")
+    allowed = _allowed_origins()
+    if origin and (origin in allowed or "*" in allowed):
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Vary"] = "Origin"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
+
+
 def _validate_iana_timezone(tz: str) -> bool:
     try:
         ZoneInfo(tz)

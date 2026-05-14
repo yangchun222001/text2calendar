@@ -96,6 +96,15 @@ cd frontend
 npm test
 ```
 
+## Deployment
+
+Recommended production setup:
+
+- Frontend: Vercel at `https://calendarai.tinyworks.dev`
+- Backend: Railway at `https://api-calendarai.tinyworks.dev`
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the full setup.
+
 ## API
 
 - `GET /api/health`: returns `{ "status": "ok" }`

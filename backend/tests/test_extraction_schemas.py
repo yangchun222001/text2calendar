@@ -88,6 +88,16 @@ def test_validate_warning_ok():
     )
 
 
+def test_validate_default_start_time_warning_ok():
+    validate_extraction_warning(
+        {
+            "field": "startTime",
+            "code": "DEFAULT_START_TIME",
+            "message": "No clear start time found; defaulted to 10:00 AM.",
+        }
+    )
+
+
 def test_validate_warning_bad_code():
     with pytest.raises(ValidationError):
         validate_extraction_warning(

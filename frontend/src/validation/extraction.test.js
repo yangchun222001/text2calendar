@@ -104,6 +104,16 @@ describe("validateExtractionWarning", () => {
     ).not.toThrow();
   });
 
+  it("accepts the default start time warning code", () => {
+    expect(() =>
+      validateExtractionWarning({
+        field: "startTime",
+        code: "DEFAULT_START_TIME",
+        message: "No clear start time found; defaulted to 10:00 AM.",
+      }),
+    ).not.toThrow();
+  });
+
   it("rejects unknown warning code", () => {
     expect(() =>
       validateExtractionWarning({
