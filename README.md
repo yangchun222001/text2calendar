@@ -9,6 +9,8 @@ Paste event details from an email, message, flyer, newsletter, or webpage. The
 app extracts the title, date, time, location, notes, timezone, and guests, lets
 you review everything, and then hands off to Google Calendar for final saving.
 
+[text](https://text2calendar.tinyworks.dev/)
+
 ## Features
 
 - Paste natural-language event text.
@@ -38,7 +40,7 @@ docs/      Product and technical docs
 
 - Node.js and npm
 - Python 3
-- An OpenAI-compatible API key for live extraction
+- An API key for live extraction
 
 ## Backend Setup
 
@@ -124,8 +126,3 @@ Example request body:
 - Raw pasted text, prompts, model responses, guest emails, and generated
   calendar links should not be persisted or logged.
 
-## Status
-
-This is an MVP focused on single-event extraction and Google Calendar handoff.
-Future work may include richer multi-event extraction, recurring events, or
-direct calendar integration with OAuth.
