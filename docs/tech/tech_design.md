@@ -1,10 +1,10 @@
-# Text To Calendar Technical Design
+# Text2Calendar Technical Design
 
 ## 1. Overview
 
 ![alt text](image.png)
 
-Text to Calendar is a single-page web app that converts unstructured event text into an editable calendar draft, then opens Google Calendar with the event pre-filled.
+Text2Calendar is a single-page web app that converts unstructured event text into an editable calendar draft, then opens Google Calendar with the event pre-filled.
 
 The MVP should stay intentionally small:
 

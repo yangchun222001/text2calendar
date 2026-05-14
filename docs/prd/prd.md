@@ -1,4 +1,4 @@
-# Calendar Tool PRD
+# Text2Calendar PRD
 
 ## 1. Overview
 

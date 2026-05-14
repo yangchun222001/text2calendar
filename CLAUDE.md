@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-`calendar_tool` is an MVP for Text to Calendar with a split frontend/backend architecture.
+`calendar_tool` is an MVP for Text2Calendar with a split frontend/backend architecture.
 
 - Frontend: React + JavaScript + Vite on Node.js, using ES modules via `"type": "module"`.
 - Backend: Flask API.

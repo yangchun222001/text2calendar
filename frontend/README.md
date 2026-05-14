@@ -1,6 +1,6 @@
 # Frontend
 
-React + JavaScript + Vite single-page UI for the Text to Calendar tool.
+React + JavaScript + Vite single-page UI for the Text2Calendar tool.
 
 ## Setup
 

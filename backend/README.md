@@ -1,6 +1,6 @@
 # Backend
 
-Flask API for the Text to Calendar MVP. Hosts the extraction endpoint and keeps
+Flask API for the Text2Calendar MVP. Hosts the extraction endpoint and keeps
 `LLM_API_KEY` server-side.
 
 ## Setup

@@ -36,7 +36,7 @@ Keep the UI compact and practical. Avoid a big hero, marketing copy, illustratio
 
 Simple top bar:
 
-- Product name: `Text to Calendar`
+- Product name: `Text2Calendar`
 - Short tagline: `Turn event text into a Google Calendar draft`
 
 No navigation is needed for the demo.

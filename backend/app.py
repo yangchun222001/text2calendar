@@ -1,4 +1,4 @@
-"""Flask backend entrypoint for the Text to Calendar MVP."""
+"""Flask backend entrypoint for the Text2Calendar MVP."""
 
 import os
 from zoneinfo import ZoneInfo

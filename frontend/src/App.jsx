@@ -290,7 +290,7 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <h1>Text to Calendar</h1>
+          <h1>Text2Calendar</h1>
           <p>Turn event text into a Google Calendar draft</p>
         </div>
       </header>

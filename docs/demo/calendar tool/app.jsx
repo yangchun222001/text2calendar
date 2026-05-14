@@ -92,7 +92,7 @@ function Header() {
           </svg>
         </div>
         <div className="brand-text">
-          <h1>Text to Calendar</h1>
+          <h1>Text2Calendar</h1>
           <p>Turn event text into a Google Calendar draft</p>
         </div>
       </div>
