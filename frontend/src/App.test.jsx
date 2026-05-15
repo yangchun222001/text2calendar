@@ -131,6 +131,7 @@ describe("App MVP flow", () => {
     expect(globalThis.fetch.mock.calls[0][0]).toBe("/api/extract-event");
     const request = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
     expect(request.text).toBe("Restaurant night at 5:15");
+    expect(request.currentTime).toMatch(/^([01]\d|2[0-3]):[0-5]\d$/);
     expect(globalThis.open).toHaveBeenCalledTimes(1);
 
     const openedUrl = globalThis.open.mock.calls[0][0];

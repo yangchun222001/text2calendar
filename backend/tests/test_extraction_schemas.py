@@ -36,6 +36,29 @@ def test_validate_request_ok():
     )
 
 
+def test_validate_request_ok_with_current_time():
+    validate_extract_event_request(
+        {
+            "text": "hello",
+            "timezone": "UTC",
+            "currentDate": "2026-05-12",
+            "currentTime": "23:20",
+        }
+    )
+
+
+def test_validate_request_bad_current_time():
+    with pytest.raises(ValidationError):
+        validate_extract_event_request(
+            {
+                "text": "hello",
+                "timezone": "UTC",
+                "currentDate": "2026-05-12",
+                "currentTime": "24:00",
+            }
+        )
+
+
 def test_validate_request_empty_text():
     with pytest.raises(ValidationError):
         validate_extract_event_request(

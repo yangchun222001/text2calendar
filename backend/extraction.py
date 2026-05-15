@@ -12,6 +12,7 @@ import os
 import re
 import urllib.error
 import urllib.request
+from datetime import date, timedelta
 from typing import Any, Callable
 
 ExtractEventFn = Callable[[dict[str, Any]], dict[str, Any]]
@@ -34,7 +35,7 @@ Rules:
 - Put instructions, reminders, caveats, logistics, and secondary times in notes (plain text; can use short lines or bullets).
 - If month or year is missing, choose the nearest reasonable upcoming date relative to currentDate (in the user's timezone context).
 - If end time or duration is missing with no clear signal, set endTime one hour after startTime and add a warning with code DEFAULT_DURATION when startTime is present; if startTime is null, endTime may be null.
-- If start time is missing or unclear, set startTime to "10:00", set endTime to "11:00" unless a clearer duration/end time is provided, set missingStartTime to false, and add a warning with code DEFAULT_START_TIME.
+- If start time is missing or unclear, set startTime to "10:00", set endTime to "11:00" unless a clearer duration/end time is provided, set missingStartTime to false, and add a warning with code DEFAULT_START_TIME. If the default "10:00" would be in the past on currentDate relative to currentTime, choose the next reasonable date instead.
 - If multiple times appear, pick the best single start/end for attending; put other times in notes; optionally add MULTIPLE_POSSIBLE_TIMES.
 - Use IANA timezone from the user context for the draft timezone field (must match the provided timezone string exactly).
 - guests must be an array of strings (emails if present in text, else empty array).
@@ -90,6 +91,7 @@ def _build_user_message(payload: dict[str, Any]) -> str:
             "eventText": payload["text"],
             "timezone": payload["timezone"],
             "currentDate": payload["currentDate"],
+            "currentTime": payload.get("currentTime"),
             "locale": locale,
         },
         ensure_ascii=False,
@@ -117,6 +119,11 @@ def _string_or_default(value: Any, default: str = "") -> str:
 def _fallback_title(text: str) -> str:
     compact = " ".join(text.split())
     return compact[:80] or "Untitled event"
+
+
+def _next_iso_date(value: str) -> str:
+    parsed = date.fromisoformat(value)
+    return (parsed + timedelta(days=1)).isoformat()
 
 
 def _normalize_warnings(raw_warnings: list[Any]) -> list[dict[str, str]]:
@@ -194,7 +201,8 @@ def _normalize_response(payload: dict[str, Any], raw: dict[str, Any]) -> dict[st
         end_time = None
         draft["endTime"] = None
 
-    if draft.get("startTime") is None:
+    defaulted_start_time = draft.get("startTime") is None
+    if defaulted_start_time:
         draft["startTime"] = DEFAULT_START_TIME
         draft["missingStartTime"] = False
         if draft.get("endTime") is None:
@@ -213,6 +221,22 @@ def _normalize_response(payload: dict[str, Any], raw: dict[str, Any]) -> dict[st
         )
     else:
         draft["missingStartTime"] = False
+
+    current_time = payload.get("currentTime")
+    if (
+        defaulted_start_time
+        and draft.get("date") == payload["currentDate"]
+        and isinstance(current_time, str)
+        and TIME_RE.match(current_time)
+        and current_time >= DEFAULT_START_TIME
+    ):
+        draft["date"] = _next_iso_date(payload["currentDate"])
+        _append_warning(
+            warnings,
+            "date",
+            "INFERRED_DATE",
+            "Default start time had already passed; moved the date to tomorrow.",
+        )
 
     if len(text) < 8:
         _append_warning(

@@ -112,6 +112,7 @@ Example request body:
   "text": "Dinner at 6pm Friday at House of Nanking",
   "timezone": "America/Los_Angeles",
   "currentDate": "2026-05-13",
+  "currentTime": "23:20",
   "locale": "en-US"
 }
 ```
@@ -125,4 +126,3 @@ Example request body:
   reviews and saves it in Google Calendar.
 - Raw pasted text, prompts, model responses, guest emails, and generated
   calendar links should not be persisted or logged.
-

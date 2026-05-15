@@ -57,6 +57,30 @@ def test_normalize_response_defaults_missing_start_time():
     ]
 
 
+def test_normalize_response_moves_expired_default_start_to_tomorrow():
+    result = _normalize_response(
+        _payload(currentDate="2026-05-14", currentTime="23:20"),
+        {
+            "draft": _draft(
+                date="2026-05-14",
+                startTime=None,
+                endTime=None,
+                missingStartTime=True,
+            ),
+            "warnings": [],
+        },
+    )
+
+    assert result["draft"]["date"] == "2026-05-15"
+    assert result["draft"]["startTime"] == "10:00"
+    assert result["draft"]["endTime"] == "11:00"
+    assert [warning["code"] for warning in result["warnings"]] == [
+        "DEFAULT_DURATION",
+        "DEFAULT_START_TIME",
+        "INFERRED_DATE",
+    ]
+
+
 def test_normalize_response_preserves_explicit_start_time():
     result = _normalize_response(
         _payload(),

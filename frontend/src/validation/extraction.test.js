@@ -33,6 +33,28 @@ describe("validateExtractEventRequest", () => {
     ).not.toThrow();
   });
 
+  it("accepts currentTime on requests", () => {
+    expect(() =>
+      validateExtractEventRequest({
+        text: "hello",
+        timezone: "UTC",
+        currentDate: "2026-05-12",
+        currentTime: "23:20",
+      }),
+    ).not.toThrow();
+  });
+
+  it("rejects invalid currentTime", () => {
+    expect(() =>
+      validateExtractEventRequest({
+        text: "hello",
+        timezone: "UTC",
+        currentDate: "2026-05-12",
+        currentTime: "24:00",
+      }),
+    ).toThrow();
+  });
+
   it("rejects empty text", () => {
     expect(() =>
       validateExtractEventRequest({
