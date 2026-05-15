@@ -63,6 +63,10 @@ DEFAULT_START_TIME = "10:00"
 DEFAULT_END_TIME = "11:00"
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 TIME_RE = re.compile(r"^([01][0-9]|2[0-3]):[0-5][0-9]$")
+TEXT_TIME_RE = re.compile(
+    r"\b\d{1,2}:\d{2}\b|\b\d{1,2}\s*(?:a\.?m\.?|p\.?m\.?)\b|\b(?:noon|midnight)\b",
+    re.IGNORECASE,
+)
 WARNING_FIELDS = {
     "general",
     "title",
@@ -120,6 +124,10 @@ def _string_or_default(value: Any, default: str = "") -> str:
 def _fallback_title(text: str) -> str:
     compact = " ".join(text.split())
     return compact[:80] or "Untitled event"
+
+
+def _has_time_signal(text: str) -> bool:
+    return bool(TEXT_TIME_RE.search(text))
 
 
 def _next_iso_date(value: str) -> str:
@@ -216,6 +224,14 @@ def _normalize_response(payload: dict[str, Any], raw: dict[str, Any]) -> dict[st
         draft["endTime"] = None
 
     defaulted_start_time = draft.get("startTime") is None
+    model_defaulted_start_time = (
+        draft.get("startTime") == DEFAULT_START_TIME
+        and (
+            draft.get("missingStartTime") is True
+            or _has_warning(warnings, "DEFAULT_START_TIME")
+            or not _has_time_signal(text)
+        )
+    )
     if defaulted_start_time:
         draft["startTime"] = DEFAULT_START_TIME
         draft["missingStartTime"] = False
@@ -238,7 +254,7 @@ def _normalize_response(payload: dict[str, Any], raw: dict[str, Any]) -> dict[st
 
     current_time = _current_time_for_payload(payload)
     if (
-        defaulted_start_time
+        (defaulted_start_time or model_defaulted_start_time)
         and draft.get("date") == payload["currentDate"]
         and current_time is not None
         and current_time >= DEFAULT_START_TIME

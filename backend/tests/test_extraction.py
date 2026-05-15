@@ -81,6 +81,65 @@ def test_normalize_response_moves_expired_default_start_to_tomorrow():
     ]
 
 
+def test_normalize_response_moves_model_default_start_to_tomorrow():
+    result = _normalize_response(
+        _payload(
+            text="阁楼",
+            currentDate="2026-05-14",
+            currentTime="23:20",
+        ),
+        {
+            "draft": _draft(
+                title="阁楼",
+                date="2026-05-14",
+                startTime="10:00",
+                endTime="11:00",
+                missingStartTime=False,
+            ),
+            "warnings": [
+                {
+                    "field": "startTime",
+                    "code": "DEFAULT_START_TIME",
+                    "message": "No clear start time found; defaulted to 10:00 AM.",
+                }
+            ],
+        },
+    )
+
+    assert result["draft"]["date"] == "2026-05-15"
+    assert result["draft"]["startTime"] == "10:00"
+    assert result["draft"]["endTime"] == "11:00"
+    assert [warning["code"] for warning in result["warnings"]] == [
+        "DEFAULT_START_TIME",
+        "INFERRED_DATE",
+        "LOW_CONFIDENCE",
+    ]
+
+
+def test_normalize_response_preserves_explicit_10am_start_time():
+    result = _normalize_response(
+        _payload(
+            text="Meeting today at 10:00",
+            currentDate="2026-05-14",
+            currentTime="23:20",
+        ),
+        {
+            "draft": _draft(
+                title="Meeting",
+                date="2026-05-14",
+                startTime="10:00",
+                endTime="11:00",
+                missingStartTime=False,
+            ),
+            "warnings": [],
+        },
+    )
+
+    assert result["draft"]["date"] == "2026-05-14"
+    assert result["draft"]["startTime"] == "10:00"
+    assert result["warnings"] == []
+
+
 def test_normalize_response_preserves_explicit_start_time():
     result = _normalize_response(
         _payload(),
