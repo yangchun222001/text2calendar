@@ -4,7 +4,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import App from "./App.jsx";
+import App, { avoidPastDefaultStart } from "./App.jsx";
 
 function draft(overrides = {}) {
   return {
@@ -45,7 +45,11 @@ function mockBrowserTimezone(detectedTimezone) {
   });
 }
 
-async function generateDraft(user, text = "Restaurant night at 5:15") {
+async function generateDraft(
+  user,
+  text = "Restaurant night at 5:15",
+  expectedTitle = "Restaurant Night Fundraiser",
+) {
   await user.type(
     screen.getByPlaceholderText(
       "Paste an email, message, flyer text, or event description…",
@@ -53,7 +57,7 @@ async function generateDraft(user, text = "Restaurant night at 5:15") {
     text,
   );
   await user.click(screen.getByRole("button", { name: "Generate event" }));
-  await screen.findByDisplayValue("Restaurant Night Fundraiser");
+  await screen.findByDisplayValue(expectedTitle);
 }
 
 beforeEach(() => {
@@ -67,6 +71,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   window.localStorage.clear();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -131,7 +136,7 @@ describe("App MVP flow", () => {
     expect(globalThis.fetch.mock.calls[0][0]).toBe("/api/extract-event");
     const request = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
     expect(request.text).toBe("Restaurant night at 5:15");
-    expect(request.currentTime).toMatch(/^([01]\d|2[0-3]):[0-5]\d$/);
+    expect(request).not.toHaveProperty("currentTime");
     expect(globalThis.open).toHaveBeenCalledTimes(1);
 
     const openedUrl = globalThis.open.mock.calls[0][0];
@@ -261,6 +266,29 @@ describe("App MVP flow", () => {
     expect(new URL(openedUrl).searchParams.get("dates")).toBe(
       "20260506T100000/20260506T110000",
     );
+  });
+
+  it("moves a past default 10 AM draft to tomorrow in the browser", () => {
+    const adjusted = avoidPastDefaultStart(
+      draft({
+        title: "爬阁楼",
+        date: "2026-05-14",
+        startTime: "10:00",
+        endTime: "11:00",
+        missingStartTime: false,
+      }),
+      [
+        {
+          field: "startTime",
+          code: "DEFAULT_START_TIME",
+          message: "No clear start time found; defaulted to 10:00 AM.",
+        },
+      ],
+      "爬阁楼",
+      new Date(2026, 4, 14, 23, 20),
+    );
+
+    expect(adjusted.date).toBe("2026-05-15");
   });
 
   it("uses the draft timezone when opening Google Calendar", async () => {

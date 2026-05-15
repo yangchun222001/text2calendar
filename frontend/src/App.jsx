@@ -18,6 +18,9 @@ const ExtractionState = {
   ERROR: "error",
 };
 
+const DEFAULT_START_TIME = "10:00";
+const TEXT_TIME_RE =
+  /\b\d{1,2}:\d{2}\b|\b\d{1,2}\s*(?:a\.?m\.?|p\.?m\.?)\b|\b(?:noon|midnight)\b/i;
 const RECENT_GUESTS_STORAGE_KEY = "calendar-tool-recent-guests";
 const MAX_RECENT_GUESTS = 12;
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(
@@ -74,6 +77,45 @@ function localTime(d = new Date()) {
   const h = String(d.getHours()).padStart(2, "0");
   const m = String(d.getMinutes()).padStart(2, "0");
   return `${h}:${m}`;
+}
+
+function nextISODate(value) {
+  const [year, month, day] = value.split("-").map(Number);
+  const d = new Date(year, month - 1, day);
+  d.setDate(d.getDate() + 1);
+  return localISODate(d);
+}
+
+function hasTimeSignal(value) {
+  return TEXT_TIME_RE.test(value);
+}
+
+function hasWarning(warnings, code) {
+  return warnings.some((warning) => warning?.code === code);
+}
+
+export function avoidPastDefaultStart(
+  draft,
+  warnings,
+  sourceText,
+  now = new Date(),
+) {
+  const today = localISODate(now);
+  const nowTime = localTime(now);
+  const looksDefaulted =
+    draft.startTime === DEFAULT_START_TIME &&
+    (draft.missingStartTime ||
+      hasWarning(warnings, "DEFAULT_START_TIME") ||
+      !hasTimeSignal(sourceText));
+
+  if (
+    looksDefaulted &&
+    draft.date === today &&
+    nowTime >= DEFAULT_START_TIME
+  ) {
+    return { ...draft, date: nextISODate(draft.date) };
+  }
+  return draft;
 }
 
 /** @param {string} v */
@@ -209,7 +251,6 @@ export default function App() {
       text: trimmed,
       timezone,
       currentDate: localISODate(),
-      currentTime: localTime(),
       locale: navigator.language || "en-US",
     };
 
@@ -239,8 +280,11 @@ export default function App() {
 
       try {
         validateExtractEventResponse(data);
-        setDraft(data.draft);
-        setWarnings(Array.isArray(data.warnings) ? data.warnings : []);
+        const responseWarnings = Array.isArray(data.warnings)
+          ? data.warnings
+          : [];
+        setDraft(avoidPastDefaultStart(data.draft, responseWarnings, trimmed));
+        setWarnings(responseWarnings);
         setStatus(ExtractionState.GENERATED);
       } catch (e) {
         setApiError(
