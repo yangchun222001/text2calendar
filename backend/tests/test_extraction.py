@@ -1,4 +1,5 @@
 from extraction import _normalize_response
+from validators import validate_extract_event_response
 
 
 def _payload(**kwargs):
@@ -68,3 +69,45 @@ def test_normalize_response_preserves_explicit_start_time():
     assert result["draft"]["startTime"] == "14:30"
     assert result["draft"]["endTime"] == "15:30"
     assert result["warnings"] == []
+
+
+def test_normalize_response_repairs_sparse_low_confidence_draft():
+    result = _normalize_response(
+        _payload(text="梯子"),
+        {
+            "draft": {
+                "title": "",
+                "date": None,
+                "startTime": None,
+                "endTime": None,
+                "timezone": "UTC",
+                "extra": "ignored",
+            },
+            "warnings": [
+                {
+                    "field": "general",
+                    "code": "NOT_IN_SCHEMA",
+                    "message": "Model-specific warning.",
+                }
+            ],
+        },
+    )
+
+    assert result["draft"] == {
+        "title": "梯子",
+        "date": "2026-05-12",
+        "startTime": "10:00",
+        "endTime": "11:00",
+        "timezone": "America/Los_Angeles",
+        "location": "",
+        "notes": "",
+        "guests": [],
+        "missingStartTime": False,
+    }
+    assert [warning["code"] for warning in result["warnings"]] == [
+        "INFERRED_DATE",
+        "DEFAULT_DURATION",
+        "DEFAULT_START_TIME",
+        "LOW_CONFIDENCE",
+    ]
+    validate_extract_event_response(result)

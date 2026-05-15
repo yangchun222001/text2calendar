@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 from typing import Any, Callable
@@ -58,6 +59,28 @@ Each warning object:
 
 DEFAULT_START_TIME = "10:00"
 DEFAULT_END_TIME = "11:00"
+DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+TIME_RE = re.compile(r"^([01][0-9]|2[0-3]):[0-5][0-9]$")
+WARNING_FIELDS = {
+    "general",
+    "title",
+    "date",
+    "startTime",
+    "endTime",
+    "timezone",
+    "location",
+    "notes",
+    "guests",
+    "missingStartTime",
+}
+WARNING_CODES = {
+    "INFERRED_DATE",
+    "DEFAULT_START_TIME",
+    "DEFAULT_DURATION",
+    "MISSING_START_TIME",
+    "LOW_CONFIDENCE",
+    "MULTIPLE_POSSIBLE_TIMES",
+}
 
 
 def _build_user_message(payload: dict[str, Any]) -> str:
@@ -80,6 +103,42 @@ def _has_warning(warnings: list[Any], code: str) -> bool:
     )
 
 
+def _append_warning(
+    warnings: list[dict[str, str]], field: str, code: str, message: str
+) -> None:
+    if not _has_warning(warnings, code):
+        warnings.append({"field": field, "code": code, "message": message})
+
+
+def _string_or_default(value: Any, default: str = "") -> str:
+    return value if isinstance(value, str) else default
+
+
+def _fallback_title(text: str) -> str:
+    compact = " ".join(text.split())
+    return compact[:80] or "Untitled event"
+
+
+def _normalize_warnings(raw_warnings: list[Any]) -> list[dict[str, str]]:
+    warnings: list[dict[str, str]] = []
+    for warning in raw_warnings:
+        if not isinstance(warning, dict):
+            continue
+        field = warning.get("field")
+        code = warning.get("code")
+        message = warning.get("message")
+        if (
+            field in WARNING_FIELDS
+            and code in WARNING_CODES
+            and isinstance(message, str)
+            and message.strip()
+        ):
+            warnings.append(
+                {"field": field, "code": code, "message": message.strip()}
+            )
+    return warnings
+
+
 def _normalize_response(payload: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
     """Ensure draft.timezone matches request; return {draft, warnings}."""
     if not isinstance(raw, dict):
@@ -96,35 +155,87 @@ def _normalize_response(payload: dict[str, Any], raw: dict[str, Any]) -> dict[st
     draft = dict(draft)
     warnings = [
         warning
-        for warning in warnings
-        if not (
-            isinstance(warning, dict)
-            and warning.get("code") == "MISSING_START_TIME"
-        )
+        for warning in _normalize_warnings(warnings)
+        if warning.get("code") != "MISSING_START_TIME"
     ]
+
+    text = _string_or_default(payload.get("text")).strip()
+    draft["title"] = _string_or_default(draft.get("title")).strip() or _fallback_title(
+        text
+    )
+    draft["location"] = _string_or_default(draft.get("location"))
+    draft["notes"] = _string_or_default(draft.get("notes"))
+    guests = draft.get("guests")
+    draft["guests"] = (
+        [guest for guest in guests if isinstance(guest, str)]
+        if isinstance(guests, list)
+        else []
+    )
+
+    if not isinstance(draft.get("date"), str) or not DATE_RE.match(draft["date"]):
+        draft["date"] = payload["currentDate"]
+        _append_warning(
+            warnings,
+            "date",
+            "INFERRED_DATE",
+            "No clear date found; defaulted to today's date.",
+        )
+
+    start_time = draft.get("startTime")
+    if start_time is not None and (
+        not isinstance(start_time, str) or not TIME_RE.match(start_time)
+    ):
+        start_time = None
+        draft["startTime"] = None
+
+    end_time = draft.get("endTime")
+    if end_time is not None and (
+        not isinstance(end_time, str) or not TIME_RE.match(end_time)
+    ):
+        end_time = None
+        draft["endTime"] = None
+
     if draft.get("startTime") is None:
         draft["startTime"] = DEFAULT_START_TIME
         draft["missingStartTime"] = False
         if draft.get("endTime") is None:
             draft["endTime"] = DEFAULT_END_TIME
-            if not _has_warning(warnings, "DEFAULT_DURATION"):
-                warnings.append(
-                    {
-                        "field": "endTime",
-                        "code": "DEFAULT_DURATION",
-                        "message": "No duration found; defaulted to one hour.",
-                    }
-                )
-        if not _has_warning(warnings, "DEFAULT_START_TIME"):
-            warnings.append(
-                {
-                    "field": "startTime",
-                    "code": "DEFAULT_START_TIME",
-                    "message": "No clear start time found; defaulted to 10:00 AM.",
-                }
+            _append_warning(
+                warnings,
+                "endTime",
+                "DEFAULT_DURATION",
+                "No duration found; defaulted to one hour.",
             )
+        _append_warning(
+            warnings,
+            "startTime",
+            "DEFAULT_START_TIME",
+            "No clear start time found; defaulted to 10:00 AM.",
+        )
+    else:
+        draft["missingStartTime"] = False
+
+    if len(text) < 8:
+        _append_warning(
+            warnings,
+            "general",
+            "LOW_CONFIDENCE",
+            "The source text was very short; review the generated draft carefully.",
+        )
+
     draft["timezone"] = payload["timezone"]
-    return {"draft": draft, "warnings": warnings}
+    normalized_draft = {
+        "title": draft["title"],
+        "date": draft["date"],
+        "startTime": draft["startTime"],
+        "endTime": draft["endTime"],
+        "timezone": draft["timezone"],
+        "location": draft["location"],
+        "notes": draft["notes"],
+        "guests": draft["guests"],
+        "missingStartTime": draft["missingStartTime"],
+    }
+    return {"draft": normalized_draft, "warnings": warnings}
 
 
 def _openai_chat_completion_json(
