@@ -111,3 +111,35 @@ def test_normalize_response_repairs_sparse_low_confidence_draft():
         "LOW_CONFIDENCE",
     ]
     validate_extract_event_response(result)
+
+
+def test_normalize_response_repairs_unwrapped_model_object():
+    result = _normalize_response(
+        _payload(text="阁楼"),
+        {
+            "title": "",
+            "date": "",
+            "startTime": "",
+            "endTime": "",
+            "reason": "Not enough event details.",
+        },
+    )
+
+    assert result["draft"] == {
+        "title": "阁楼",
+        "date": "2026-05-12",
+        "startTime": "10:00",
+        "endTime": "11:00",
+        "timezone": "America/Los_Angeles",
+        "location": "",
+        "notes": "",
+        "guests": [],
+        "missingStartTime": False,
+    }
+    assert [warning["code"] for warning in result["warnings"]] == [
+        "INFERRED_DATE",
+        "DEFAULT_DURATION",
+        "DEFAULT_START_TIME",
+        "LOW_CONFIDENCE",
+    ]
+    validate_extract_event_response(result)

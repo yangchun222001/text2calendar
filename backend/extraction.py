@@ -147,11 +147,10 @@ def _normalize_response(payload: dict[str, Any], raw: dict[str, Any]) -> dict[st
         )
     draft = raw.get("draft")
     warnings = raw.get("warnings")
-    if not isinstance(draft, dict) or not isinstance(warnings, list):
-        raise ExtractionError(
-            "INVALID_MODEL_OUTPUT",
-            'Model JSON must include object "draft" and array "warnings".',
-        )
+    if not isinstance(draft, dict):
+        draft = raw
+    if not isinstance(warnings, list):
+        warnings = []
     draft = dict(draft)
     warnings = [
         warning
