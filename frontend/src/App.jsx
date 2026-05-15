@@ -18,23 +18,6 @@ const ExtractionState = {
   ERROR: "error",
 };
 
-const COMMON_TIMEZONES = [
-  "America/Los_Angeles",
-  "America/Denver",
-  "America/Chicago",
-  "America/New_York",
-  "America/Phoenix",
-  "America/Anchorage",
-  "Pacific/Honolulu",
-  "UTC",
-  "Europe/London",
-  "Europe/Paris",
-  "Europe/Berlin",
-  "Asia/Tokyo",
-  "Asia/Shanghai",
-  "Australia/Sydney",
-];
-
 const RECENT_GUESTS_STORAGE_KEY = "calendar-tool-recent-guests";
 const MAX_RECENT_GUESTS = 12;
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(
@@ -73,7 +56,7 @@ function saveRecentGuests(guests) {
 function getDefaultTimezone() {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (tz && typeof tz === "string") return tz;
+    if (tz && typeof tz === "string" && isValidTimezone(tz)) return tz;
   } catch {
     /* ignore */
   }
@@ -101,7 +84,6 @@ export default function App() {
   const [draft, setDraft] = useState(null);
   const [warnings, setWarnings] = useState([]);
   const [inputError, setInputError] = useState("");
-  const [timezoneError, setTimezoneError] = useState("");
   const [apiError, setApiError] = useState("");
   const [calendarError, setCalendarError] = useState("");
   const [calendarValidation, setCalendarValidation] = useState(null);
@@ -131,7 +113,6 @@ export default function App() {
     setDraft(null);
     setWarnings([]);
     setInputError("");
-    setTimezoneError("");
     setApiError("");
     setCalendarError("");
     setCalendarValidation(null);
@@ -205,19 +186,14 @@ export default function App() {
 
   const generate = async () => {
     const rawValidation = validateRawEventText(text);
-    const tzValidation = isValidTimezone(timezone);
     if (!rawValidation.valid) {
       setInputError(rawValidation.message);
     }
-    if (!tzValidation) {
-      setTimezoneError("Use a valid IANA timezone before generating.");
-    }
-    if (!rawValidation.valid || !tzValidation) {
+    if (!rawValidation.valid) {
       return;
     }
     const trimmed = text.trim();
     setInputError("");
-    setTimezoneError("");
     setApiError("");
     setCalendarError("");
     setCalendarValidation(null);
@@ -322,39 +298,6 @@ export default function App() {
               {inputError}
             </p>
           ) : null}
-
-          <div className="field field-tight">
-            <label className="field-label" htmlFor="tz-input">
-              Timezone
-            </label>
-            <input
-              id="tz-input"
-              className="input"
-              list="common-timezones"
-              value={timezone}
-              onChange={(e) => {
-                setTimezone(e.target.value);
-                setTimezoneError("");
-              }}
-              disabled={status === ExtractionState.LOADING}
-              autoComplete="off"
-              aria-invalid={Boolean(timezoneError)}
-            />
-            <datalist id="common-timezones">
-              {COMMON_TIMEZONES.map((tz) => (
-                <option key={tz} value={tz} />
-              ))}
-            </datalist>
-            <p className="field-hint">
-              IANA name (e.g. America/Los_Angeles). Sent with your text to the
-              extractor.
-            </p>
-            {timezoneError ? (
-              <p className="inline-error tight" role="alert">
-                {timezoneError}
-              </p>
-            ) : null}
-          </div>
 
           <div className="actions">
             <button
@@ -518,23 +461,6 @@ export default function App() {
                   </div>
                 </div>
                 <div className="field">
-                  <label className="field-label" htmlFor="f-tz-draft">
-                    Timezone
-                  </label>
-                  <input
-                    id="f-tz-draft"
-                    className="input"
-                    value={draft.timezone}
-                    onChange={(e) => updateDraft("timezone", e.target.value)}
-                    aria-invalid={Boolean(fieldErrors.timezone)}
-                  />
-                  {fieldErrors.timezone ? (
-                    <p className="inline-error tight" role="alert">
-                      {fieldErrors.timezone}
-                    </p>
-                  ) : null}
-                </div>
-                <div className="field">
                   <label className="field-label" htmlFor="f-loc">
                     Location
                   </label>
@@ -649,6 +575,11 @@ export default function App() {
                 {calendarError ? (
                   <p className="inline-error calendar-error" role="alert">
                     {calendarError}
+                  </p>
+                ) : null}
+                {fieldErrors.timezone ? (
+                  <p className="inline-error calendar-error" role="alert">
+                    {fieldErrors.timezone}
                   </p>
                 ) : null}
                 <p className="field-hint calendar-note">

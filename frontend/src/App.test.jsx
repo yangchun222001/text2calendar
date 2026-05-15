@@ -31,6 +31,20 @@ function mockExtraction(responseDraft = draft(), warnings = []) {
   });
 }
 
+function mockBrowserTimezone(detectedTimezone) {
+  vi.spyOn(Intl, "DateTimeFormat").mockImplementation((_locale, options) => {
+    const timeZone = options?.timeZone;
+    if (timeZone === "Mars/Olympus_Mons") {
+      throw new RangeError("Invalid time zone");
+    }
+    return {
+      resolvedOptions: () => ({
+        timeZone: timeZone || detectedTimezone,
+      }),
+    };
+  });
+}
+
 async function generateDraft(user, text = "Restaurant night at 5:15") {
   await user.type(
     screen.getByPlaceholderText(
@@ -59,6 +73,44 @@ afterEach(() => {
 });
 
 describe("App MVP flow", () => {
+  it("hides timezone controls and sends the detected timezone", async () => {
+    mockBrowserTimezone("Asia/Tokyo");
+    mockExtraction();
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    expect(screen.queryByLabelText("Timezone")).toBeNull();
+    await generateDraft(user);
+
+    const request = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
+    expect(request.timezone).toBe("Asia/Tokyo");
+  });
+
+  it("falls back when browser timezone detection returns an invalid value", async () => {
+    mockBrowserTimezone("Mars/Olympus_Mons");
+    mockExtraction();
+    const user = userEvent.setup();
+
+    render(<App />);
+    await generateDraft(user);
+
+    const request = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
+    expect(request.timezone).toBe("America/Los_Angeles");
+  });
+
+  it("falls back when browser timezone detection is missing", async () => {
+    mockBrowserTimezone(undefined);
+    mockExtraction();
+    const user = userEvent.setup();
+
+    render(<App />);
+    await generateDraft(user);
+
+    const request = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
+    expect(request.timezone).toBe("America/Los_Angeles");
+  });
+
   it("pastes, generates, edits, adds a guest, and opens a calendar URL", async () => {
     mockExtraction();
     const user = userEvent.setup();
@@ -208,5 +260,19 @@ describe("App MVP flow", () => {
     expect(new URL(openedUrl).searchParams.get("dates")).toBe(
       "20260506T100000/20260506T110000",
     );
+  });
+
+  it("uses the draft timezone when opening Google Calendar", async () => {
+    mockExtraction(draft({ timezone: "Asia/Tokyo" }));
+    const user = userEvent.setup();
+
+    render(<App />);
+    await generateDraft(user);
+    await user.click(
+      screen.getByRole("button", { name: "Add to Google Calendar" }),
+    );
+
+    const openedUrl = globalThis.open.mock.calls[0][0];
+    expect(new URL(openedUrl).searchParams.get("ctz")).toBe("Asia/Tokyo");
   });
 });
