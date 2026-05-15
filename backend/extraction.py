@@ -12,8 +12,9 @@ import os
 import re
 import urllib.error
 import urllib.request
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Callable
+from zoneinfo import ZoneInfo
 
 ExtractEventFn = Callable[[dict[str, Any]], dict[str, Any]]
 
@@ -91,7 +92,7 @@ def _build_user_message(payload: dict[str, Any]) -> str:
             "eventText": payload["text"],
             "timezone": payload["timezone"],
             "currentDate": payload["currentDate"],
-            "currentTime": payload.get("currentTime"),
+            "currentTime": _current_time_for_payload(payload),
             "locale": locale,
         },
         ensure_ascii=False,
@@ -124,6 +125,19 @@ def _fallback_title(text: str) -> str:
 def _next_iso_date(value: str) -> str:
     parsed = date.fromisoformat(value)
     return (parsed + timedelta(days=1)).isoformat()
+
+
+def _current_time_for_payload(payload: dict[str, Any]) -> str | None:
+    current_time = payload.get("currentTime")
+    if isinstance(current_time, str) and TIME_RE.match(current_time):
+        return current_time
+    try:
+        now = datetime.now(ZoneInfo(payload["timezone"]))
+    except Exception:
+        return None
+    if payload.get("currentDate") != now.date().isoformat():
+        return None
+    return now.strftime("%H:%M")
 
 
 def _normalize_warnings(raw_warnings: list[Any]) -> list[dict[str, str]]:
@@ -222,12 +236,11 @@ def _normalize_response(payload: dict[str, Any], raw: dict[str, Any]) -> dict[st
     else:
         draft["missingStartTime"] = False
 
-    current_time = payload.get("currentTime")
+    current_time = _current_time_for_payload(payload)
     if (
         defaulted_start_time
         and draft.get("date") == payload["currentDate"]
-        and isinstance(current_time, str)
-        and TIME_RE.match(current_time)
+        and current_time is not None
         and current_time >= DEFAULT_START_TIME
     ):
         draft["date"] = _next_iso_date(payload["currentDate"])

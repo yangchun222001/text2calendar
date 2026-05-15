@@ -112,7 +112,6 @@ Example request body:
   "text": "Dinner at 6pm Friday at House of Nanking",
   "timezone": "America/Los_Angeles",
   "currentDate": "2026-05-13",
-  "currentTime": "23:20",
   "locale": "en-US"
 }
 ```

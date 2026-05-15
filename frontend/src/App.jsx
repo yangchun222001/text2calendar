@@ -70,12 +70,6 @@ function localISODate(d = new Date()) {
   return `${y}-${m}-${day}`;
 }
 
-function localTime(d = new Date()) {
-  const h = String(d.getHours()).padStart(2, "0");
-  const m = String(d.getMinutes()).padStart(2, "0");
-  return `${h}:${m}`;
-}
-
 /** @param {string} v */
 function normalizeStartTime(v) {
   const t = v.trim();
@@ -209,7 +203,6 @@ export default function App() {
       text: trimmed,
       timezone,
       currentDate: localISODate(),
-      currentTime: localTime(),
       locale: navigator.language || "en-US",
     };
 

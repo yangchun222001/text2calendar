@@ -128,7 +128,6 @@ Request:
   text: string,
   timezone: string,
   currentDate: string, // ISO date from the user's context, e.g. "2026-05-08"
-  currentTime?: string, // HH:mm local time from the user's context
   locale?: string, // default "en-US"
 }
 ```
