@@ -42,7 +42,7 @@ python app.py          # http://127.0.0.1:5001
 
 - `GET /api/health` returns `{ "status": "ok" }`.
 - `POST /api/extract-event` accepts
-  `{ "text": "...", "timezone": "...", "currentDate": "YYYY-MM-DD", "locale?": "..." }`.
+  `{ "text": "...", "timezone": "...", "currentDate": "YYYY-MM-DD", "currentTime?": "HH:mm", "locale?": "..." }`.
   Empty `text` returns `400 EMPTY_INPUT`. Non-empty `text` with an invalid body
   (missing fields or bad formats) returns `400 INVALID_REQUEST`. Invalid IANA
   `timezone` returns `400 INVALID_REQUEST`. On success returns `200` with
