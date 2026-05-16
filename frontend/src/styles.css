@@ -67,24 +67,20 @@ body {
   color: var(--ink-3);
 }
 
-.grid {
+.main-panel {
   flex: 1;
-  display: grid;
-  grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
-  max-width: 1320px;
+  max-width: 760px;
   width: 100%;
   margin: 0 auto;
-}
-
-@media (max-width: 900px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .col {
   padding: 24px 28px;
   border-right: 1px solid var(--line);
+}
+
+.main-panel .col {
+  border-right: none;
 }
 
 .col:last-child {
@@ -99,6 +95,10 @@ body {
   }
 
   .col:last-child {
+    border-bottom: none;
+  }
+
+  .main-panel .col {
     border-bottom: none;
   }
 }
@@ -290,7 +290,7 @@ body {
 }
 
 .preview-panel {
-  margin-top: 0;
+  margin-top: 16px;
 }
 
 .preview-loading {
@@ -355,6 +355,59 @@ body {
   padding: 0;
 }
 
+.draft-card .preview-panel {
+  margin-top: 0;
+}
+
+.draft-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(17, 24, 39, 0.42);
+}
+
+.draft-card {
+  width: min(680px, 100%);
+  max-height: min(760px, calc(100vh - 48px));
+  overflow: auto;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-elev);
+  box-shadow:
+    0 24px 70px rgba(17, 24, 39, 0.2),
+    0 4px 16px rgba(17, 24, 39, 0.08);
+}
+
+.draft-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.draft-close {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  color: var(--ink-3);
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.draft-close:hover {
+  color: var(--ink);
+  background: #f9fafb;
+}
+
 .warnings {
   list-style: none;
   margin: 0 0 14px;
@@ -401,6 +454,20 @@ body {
 
 .helpers {
   margin-bottom: 14px;
+}
+
+.draft-footnotes {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.draft-footnotes .warnings {
+  margin-bottom: 12px;
+}
+
+.draft-footnotes .helpers {
+  margin-bottom: 0;
 }
 
 .fields {
@@ -462,28 +529,6 @@ body {
 
 .chip-remove:hover {
   color: var(--ink);
-}
-
-.notes-preview {
-  list-style: none;
-  margin: 10px 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--ink-3);
-}
-
-.notes-preview li {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-}
-
-.notes-preview .bullet {
-  color: var(--ink-4);
-  flex-shrink: 0;
 }
 
 .calendar-action {

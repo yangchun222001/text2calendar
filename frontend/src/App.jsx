@@ -138,6 +138,7 @@ export default function App() {
   const [guestInput, setGuestInput] = useState("");
   const [guestError, setGuestError] = useState(false);
   const [recentGuests, setRecentGuests] = useState(loadRecentGuests);
+  const [isDraftCardOpen, setIsDraftCardOpen] = useState(false);
 
   const updateDraft = useCallback((field, value) => {
     setCalendarError("");
@@ -166,6 +167,7 @@ export default function App() {
     setCalendarValidation(null);
     setGuestInput("");
     setGuestError(false);
+    setIsDraftCardOpen(false);
   };
 
   const addGuest = () => {
@@ -285,6 +287,7 @@ export default function App() {
           : [];
         setDraft(avoidPastDefaultStart(data.draft, responseWarnings, trimmed));
         setWarnings(responseWarnings);
+        setIsDraftCardOpen(true);
         setStatus(ExtractionState.GENERATED);
       } catch (e) {
         setApiError(
@@ -300,14 +303,8 @@ export default function App() {
     }
   };
 
-  const notesLines =
-    draft?.notes
-      ?.split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean) ?? [];
-
   const showDraft = draft && status !== ExtractionState.LOADING;
-  const showIdlePlaceholder = status === ExtractionState.IDLE;
+  const showDraftCard = showDraft && isDraftCardOpen;
   const fieldErrors = calendarValidation?.fieldErrors ?? {};
   const guestSuggestions = recentGuests.filter(
     (guest) => !draft?.guests.includes(guest),
@@ -322,7 +319,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="grid">
+      <main className="main-panel">
         <section className="col col-input" aria-labelledby="input-heading">
           <div className="col-head">
             <h2 id="input-heading" className="col-title">
@@ -367,26 +364,17 @@ export default function App() {
             >
               Clear
             </button>
+            {draft ? (
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={status === ExtractionState.LOADING}
+                onClick={() => setIsDraftCardOpen(true)}
+              >
+                View draft
+              </button>
+            ) : null}
           </div>
-        </section>
-
-        <section className="col col-preview" aria-labelledby="preview-heading">
-          <div className="col-head">
-            <h2 id="preview-heading" className="col-title">
-              Calendar draft
-            </h2>
-          </div>
-
-          {showIdlePlaceholder ? (
-            <div className="placeholder">
-              <p className="placeholder-title">No draft yet</p>
-              <p className="placeholder-text">
-                Paste event text on the left, then click{" "}
-                <strong>Generate event</strong> to extract an editable calendar
-                draft here.
-              </p>
-            </div>
-          ) : null}
 
           {status === ExtractionState.LOADING ? (
             <div className="preview-panel preview-loading">
@@ -410,34 +398,43 @@ export default function App() {
               </p>
             </div>
           ) : null}
+        </section>
 
-          {showDraft ? (
-            <div className="preview-panel preview-draft">
-              {warnings.length > 0 ? (
-                <ul className="warnings" aria-label="Extraction warnings">
-                  {warnings.map((w, i) => (
-                    <li key={`${w.code}-${i}`} className="warning-item">
-                      <span className="warning-code">{w.code}</span>
-                      {w.message}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
+        {showDraftCard ? (
+          <div
+            className="draft-modal"
+            role="presentation"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setIsDraftCardOpen(false);
+            }}
+          >
+            <section
+              className="draft-card"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="preview-heading"
+            >
+              <div className="draft-card-head">
+                <h2 id="preview-heading" className="col-title">
+                  Calendar draft
+                </h2>
+                <button
+                  type="button"
+                  className="draft-close"
+                  aria-label="Close draft"
+                  onClick={() => setIsDraftCardOpen(false)}
+                >
+                  ×
+                </button>
+              </div>
 
+              <div className="preview-panel preview-draft">
               {draft.missingStartTime ? (
                 <p className="banner banner-warn" role="status">
                   Start time is missing — add a start time before opening Google
                   Calendar.
                 </p>
               ) : null}
-
-              <div className="helpers">
-                <p className="field-hint">
-                  If year or month was missing, the extractor picks the nearest
-                  reasonable upcoming date. If duration was missing, it defaults
-                  to one hour. Edit anything before adding to Google Calendar.
-                </p>
-              </div>
 
               <div className="fields">
                 <div className="field">
@@ -485,10 +482,6 @@ export default function App() {
                         {fieldErrors.startTime}
                       </p>
                     ) : null}
-                    <p className="field-hint tight">
-                      24-hour local time, e.g. 17:15. Required for a useful
-                      calendar event.
-                    </p>
                   </div>
                   <div className="field">
                     <label className="field-label" htmlFor="f-end">
@@ -533,16 +526,6 @@ export default function App() {
                     value={draft.notes}
                     onChange={(e) => updateDraft("notes", e.target.value)}
                   />
-                  {notesLines.length > 0 ? (
-                    <ul className="notes-preview" aria-hidden="true">
-                      {notesLines.map((line, idx) => (
-                        <li key={idx}>
-                          <span className="bullet">—</span>
-                          <span>{line}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
                 </div>
 
                 <div className="field">
@@ -638,9 +621,32 @@ export default function App() {
                   The event is not created until you review and save it there.
                 </p>
               </div>
+
+              <div className="draft-footnotes">
+                {warnings.length > 0 ? (
+                  <ul className="warnings" aria-label="Extraction warnings">
+                    {warnings.map((w, i) => (
+                      <li key={`${w.code}-${i}`} className="warning-item">
+                        <span className="warning-code">{w.code}</span>
+                        {w.message}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+
+                <div className="helpers">
+                  <p className="field-hint">
+                    If year or month was missing, the extractor picks the
+                    nearest reasonable upcoming date. If duration was missing,
+                    it defaults to one hour. Edit anything before adding to
+                    Google Calendar.
+                  </p>
+                </div>
+              </div>
             </div>
-          ) : null}
-        </section>
+            </section>
+          </div>
+        ) : null}
       </main>
     </div>
   );

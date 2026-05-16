@@ -161,6 +161,28 @@ describe("App MVP flow", () => {
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
+  it("opens the generated draft in a popup card without an idle placeholder", async () => {
+    mockExtraction();
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    expect(screen.queryByText("No draft yet")).toBeNull();
+    await generateDraft(user);
+
+    expect(
+      screen.getByRole("dialog", { name: "Calendar draft" }),
+    ).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Close draft" }));
+    expect(screen.queryByRole("dialog", { name: "Calendar draft" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "View draft" }));
+    expect(
+      screen.getByRole("dialog", { name: "Calendar draft" }),
+    ).toBeTruthy();
+  });
+
   it("rejects invalid guest email entry", async () => {
     mockExtraction();
     const user = userEvent.setup();
